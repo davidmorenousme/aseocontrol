@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Full — Administrador</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+      <div class="brand-icon">
+          <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:44px; height:44px; border-radius:9px; object-fit:contain; display:block;">
+      </div>
+    <div class="brand-name">
+      Casa Full
+      <span>Panel de Administracion</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="clock-pill" id="clock">00:00:00</div>
+  </div>
+</nav>
+
+<div style="max-width:420px; margin: 4rem auto; padding: 0 1rem;">
+  <div class="kiosk-card">
+
+    <div class="kiosk-header">
+        <div class="kiosk-icon" style="background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); width:100px; height:100px; border-radius:16px;">
+            <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:90px; height:90px; border-radius:12px; object-fit:contain; display:block;">
+        </div>
+      <div class="kiosk-title">Administrador</div>
+      <div class="kiosk-subtitle">Acceso restringido</div>
+    </div>
+
+    <div class="kiosk-body">
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="alert-box alert-danger" style="margin-bottom:1rem">
+            ⚠️ {{ messages[0] }}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="/login">
+        <div class="input-group">
+          <label>Correo electrónico</label>
+          <input type="email" name="email" class="doc-input" style="font-size:1rem; letter-spacing:0" placeholder="admin@correo.com" required>
+        </div>
+        <div class="input-group">
+          <label>Contraseña</label>
+          <input type="password" name="password" class="doc-input" style="font-size:1rem; letter-spacing:0" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-main">Ingresar →</button>
+      </form>
+
+      <div class="divider"></div>
+      <a href="/" style="display:block; text-align:center; font-size:0.82rem; color:var(--muted); text-decoration:none;">
+        ← Volver al kiosco
+      </a>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function tick() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('es-CO', {hour12: false});
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

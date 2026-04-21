@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Full </title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="brand">
+    <div class="brand-icon">
+  <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:44px; height:44px; border-radius:9px; object-fit:contain; display:block;">
+    </div>
+    <div class="brand-name">
+      Casa Full
+      <span>Control de Personal</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="clock-pill" id="clock">00:00:00</div>
+  </div>
+</nav>
+
+<!-- KIOSCO -->
+<div class="view active" id="view-employee">
+  <div class="employee-wrap">
+    <div class="kiosk-card">
+
+      <div class="kiosk-header">
+        <div class="kiosk-icon" style="background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); width:100px; height:100px; border-radius:16px;">
+          <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:90px; height:90px; border-radius:12px; object-fit:contain; display:block;">
+        </div>
+        <div class="kiosk-title">Registro de Turno</div>
+      </div>
+
+      <div class="kiosk-body">
+
+        <!-- PASO 1: ingresar documento -->
+        <div id="state-input">
+          <div class="input-group">
+            <label>Número de documento</label>
+            <input type="text" class="doc-input" id="docInput"
+              placeholder="Ingrese su cédula" maxlength="12"
+              oninput="this.value=this.value.replace(/\D/g,'')"
+              onkeydown="if(event.key==='Enter') lookupEmployee()">
+          </div>
+          <button class="btn-main" onclick="lookupEmployee()">Consultar ›</button>
+        </div>
+
+        <!-- PASO 2A: turno finalizado -->
+        <div id="state-finalizado" style="display:none">
+          <div class="employee-info">
+            <div class="emp-avatar" id="empInitials3"></div>
+            <div>
+              <div class="emp-name" id="empName3"></div>
+              <div class="emp-shift">🕐 <span id="empShift3"></span></div>
+            </div>
+          </div>
+          <div class="alert-box alert-danger">
+            🔒 Tu turno ya fue finalizado hoy. Hasta mañana.
+          </div>
+          <div class="divider"></div>
+          <button class="btn-secondary" onclick="resetKiosk()">← Volver</button>
+        </div>
+
+        <!-- PASO 2B: cámara (primera entrada del día) -->
+        <div id="state-camera" style="display:none">
+          <div class="employee-info">
+            <div class="emp-avatar" id="empInitials"></div>
+            <div>
+              <div class="emp-name" id="empName"></div>
+              <div class="emp-shift">🕐 <span id="empShift"></span></div>
+            </div>
+          </div>
+
+          <div id="alertBox"></div>
+
+          <!-- Selector de conjunto para supernumerarios (solo en entrada) -->
+          <div id="selector-conjunto" style="display:none">
+            <div class="input-group">
+              <label>¿En qué conjunto estás hoy?</label>
+              <select id="conjunto-select" class="select-mini" style="padding:12px; font-size:0.9rem">
+                <option value="">Seleccionar conjunto...</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1rem; text-align:center">
+            <p style="font-size:0.82rem; color:var(--muted); margin-bottom:0.8rem">
+              📸 Tómate una foto para registrar tu entrada
+            </p>
+
+            <video id="video" autoplay playsinline
+              style="width:100%; border-radius:12px; border:2px solid var(--border); display:none; max-height:220px; object-fit:cover;"></video>
+            <canvas id="canvas" style="display:none"></canvas>
+            <img id="preview" style="display:none; width:100%; border-radius:12px; border:2px solid var(--green); max-height:220px; object-fit:cover;">
+
+            <div style="display:flex; gap:8px; margin-top:0.8rem; justify-content:center">
+              <button class="btn-main" id="btn-camara" onclick="activarCamara()" style="width:auto; padding:10px 20px">
+                📷 Activar cámara
+              </button>
+              <button class="btn-main" id="btn-foto" onclick="tomarFoto()" style="display:none; width:auto; padding:10px 20px; background:var(--green-mid)">
+                ✅ Tomar foto
+              </button>
+              <button class="btn-secondary" id="btn-repetir" onclick="repetirFoto()" style="display:none; width:auto; padding:10px 20px">
+                🔄 Repetir
+              </button>
+            </div>
+          </div>
+
+          <div id="btn-confirmar-entrada" style="display:none">
+            <button class="btn-main" onclick="confirmarEntrada()">
+              <span>🟢</span> Confirmar Entrada
+            </button>
+          </div>
+
+          <div class="divider"></div>
+          <button class="btn-secondary" onclick="resetKiosk()">← Cambiar empleado</button>
+        </div>
+
+        <!-- PASO 2C: acciones (ya tiene entrada hoy) -->
+        <div id="state-actions" style="display:none">
+
+          <div class="employee-info">
+            <div class="emp-avatar" id="empInitials2"></div>
+            <div>
+              <div class="emp-name" id="empName2"></div>
+              <div class="emp-shift">🕐 <span id="empShift2"></span></div>
+            </div>
+          </div>
+
+          <div id="alertBox2"></div>
+
+          <div class="action-grid">
+            <button class="action-btn lunch-out" onclick="registrar('salida_break')">
+              <span class="btn-icon">☕</span>Salida Break
+            </button>
+            <button class="action-btn lunch-in" onclick="registrar('regreso_break')">
+              <span class="btn-icon">↩️</span>Regreso Break
+            </button>
+            <button class="action-btn lunch-out" onclick="registrar('salida_almuerzo')">
+              <span class="btn-icon">🍽️</span>Salida Almuerzo
+            </button>
+            <button class="action-btn lunch-in" onclick="registrar('regreso_almuerzo')">
+              <span class="btn-icon">↩️</span>Regreso Almuerzo
+            </button>
+            <button class="action-btn exit" onclick="registrar('salida')">
+              <span class="btn-icon">🔴</span>Fin Turno
+            </button>
+          </div>
+
+          <div class="divider"></div>
+          <button class="btn-secondary" onclick="resetKiosk()">← Cambiar empleado</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✅</span>
+  <span class="toast-msg" id="toastMsg"></span>
+</div>
+
+<script>
+  function tick() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('es-CO', {hour12: false});
+  }
+  tick(); setInterval(tick, 1000);
+
+  let empleadoActual = null;
+  let streamActual   = null;
+  let fotoCapturada  = null;
+
+  async function lookupEmployee() {
+    const doc = document.getElementById('docInput').value.trim();
+    if (!doc) return;
+
+    try {
+      const res = await fetch('/consultar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documento: doc })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        inputError();
+        showToast('⚠️ ' + (data.error || 'Documento no encontrado'));
+        return;
+      }
+
+      empleadoActual = data;
+      mostrarEmpleado(data);
+
+    } catch (e) {
+      showToast('❌ Error de conexión');
+    }
+  }
+
+  function mostrarEmpleado(data) {
+    document.getElementById('state-input').style.display = 'none';
+    const initials = data.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+    if (data.turno_finalizado) {
+      document.getElementById('empInitials3').textContent = initials;
+      document.getElementById('empName3').textContent     = data.nombre;
+      document.getElementById('empShift3').textContent    = data.turno || 'Sin horario asignado';
+      document.getElementById('state-finalizado').style.display = 'block';
+
+    } else if (data.tiene_entrada) {
+      document.getElementById('empInitials2').textContent = initials;
+      document.getElementById('empName2').textContent     = data.nombre;
+      document.getElementById('empShift2').textContent    = data.turno || 'Sin horario asignado';
+
+      const alertBox2 = document.getElementById('alertBox2');
+      if (data.novedad) {
+        const cls   = data.novedad.tipo === 'incapacidad' ? 'alert-danger' : 'alert-warn';
+        const emoji = data.novedad.tipo === 'incapacidad' ? '🏥' : '📋';
+        alertBox2.innerHTML = `<div class="alert-box ${cls}">${emoji} ${data.novedad.descripcion}</div>`;
+      } else {
+        alertBox2.innerHTML = '';
+      }
+
+      document.getElementById('state-actions').style.display = 'block';
+
+    } else {
+      document.getElementById('empInitials').textContent = initials;
+      document.getElementById('empName').textContent     = data.nombre;
+      document.getElementById('empShift').textContent    = data.turno || 'Sin horario asignado';
+
+      const alertBox = document.getElementById('alertBox');
+      if (data.novedad) {
+        const cls   = data.novedad.tipo === 'incapacidad' ? 'alert-danger' : 'alert-warn';
+        const emoji = data.novedad.tipo === 'incapacidad' ? '🏥' : '📋';
+        alertBox.innerHTML = `<div class="alert-box ${cls}">${emoji} ${data.novedad.descripcion}</div>`;
+      } else {
+        alertBox.innerHTML = '';
+      }
+
+      // Solo en primera entrada mostrar selector de conjunto para supernumerarios
+      if (data.es_supernumerario && data.conjuntos && data.conjuntos.length) {
+        const sel = document.getElementById('conjunto-select');
+        sel.innerHTML = '<option value="">Seleccionar conjunto...</option>';
+        data.conjuntos.forEach(c => {
+          sel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+        });
+        document.getElementById('selector-conjunto').style.display = 'block';
+      }
+
+      document.getElementById('state-camera').style.display = 'block';
+    }
+  }
+
+  async function activarCamara() {
+    try {
+      streamActual = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' }
+      });
+      const video = document.getElementById('video');
+      video.srcObject = streamActual;
+      video.style.display = 'block';
+      document.getElementById('btn-camara').style.display = 'none';
+      document.getElementById('btn-foto').style.display   = 'flex';
+    } catch (e) {
+      showToast('⚠️ No se pudo acceder a la cámara');
+    }
+  }
+
+  function tomarFoto() {
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    fotoCapturada = canvas.toDataURL('image/jpeg', 0.8);
+
+    document.getElementById('preview').src           = fotoCapturada;
+    document.getElementById('preview').style.display = 'block';
+    video.style.display = 'none';
+
+    streamActual.getTracks().forEach(t => t.stop());
+
+    document.getElementById('btn-foto').style.display              = 'none';
+    document.getElementById('btn-repetir').style.display           = 'flex';
+    document.getElementById('btn-confirmar-entrada').style.display = 'block';
+  }
+
+  function repetirFoto() {
+    fotoCapturada = null;
+    document.getElementById('preview').style.display               = 'none';
+    document.getElementById('btn-repetir').style.display           = 'none';
+    document.getElementById('btn-confirmar-entrada').style.display = 'none';
+    activarCamara();
+  }
+
+  async function confirmarEntrada() {
+    if (!empleadoActual || !fotoCapturada) {
+      showToast('⚠️ Primero toma una foto');
+      return;
+    }
+
+    let conjunto_id = null;
+    if (empleadoActual.es_supernumerario) {
+      conjunto_id = document.getElementById('conjunto-select').value;
+      if (!conjunto_id) {
+        showToast('⚠️ Selecciona el conjunto donde estás');
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch('/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empleado_id: empleadoActual.id,
+          nombre:      empleadoActual.nombre,
+          tipo:        'entrada',
+          foto:        fotoCapturada,
+          conjunto_id: conjunto_id
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast('⚠️ ' + (data.error || 'No se pudo registrar'));
+        return;
+      }
+
+      showToast('✅ Entrada registrada');
+      setTimeout(resetKiosk, 1600);
+
+    } catch (e) {
+      showToast('❌ Error de conexión');
+    }
+  }
+
+  async function registrar(tipo) {
+    if (!empleadoActual) return;
+
+    try {
+      const res = await fetch('/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empleado_id: empleadoActual.id,
+          nombre:      empleadoActual.nombre,
+          tipo:        tipo
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast('⚠️ ' + (data.error || 'No se pudo registrar'));
+        return;
+      }
+
+      const labels = {
+        'salida_break':     'Salida a break',
+        'regreso_break':    'Regreso de break',
+        'salida_almuerzo':  'Salida a almuerzo',
+        'regreso_almuerzo': 'Regreso de almuerzo',
+        'salida':           'Fin de turno'
+      };
+
+      showToast('✅ ' + labels[tipo]);
+      setTimeout(resetKiosk, 1600);
+
+    } catch (e) {
+      showToast('❌ Error de conexión');
+    }
+  }
+
+  function resetKiosk() {
+    empleadoActual = null;
+    fotoCapturada  = null;
+
+    if (streamActual) {
+      streamActual.getTracks().forEach(t => t.stop());
+      streamActual = null;
+    }
+
+    document.getElementById('docInput').value                      = '';
+    document.getElementById('state-input').style.display           = 'block';
+    document.getElementById('state-camera').style.display          = 'none';
+    document.getElementById('state-actions').style.display         = 'none';
+    document.getElementById('state-finalizado').style.display      = 'none';
+    document.getElementById('video').style.display                 = 'none';
+    document.getElementById('preview').style.display               = 'none';
+    document.getElementById('btn-confirmar-entrada').style.display = 'none';
+    document.getElementById('btn-camara').style.display            = 'flex';
+    document.getElementById('btn-foto').style.display              = 'none';
+    document.getElementById('btn-repetir').style.display           = 'none';
+    document.getElementById('selector-conjunto').style.display     = 'none';
+    document.getElementById('alertBox').innerHTML                  = '';
+    document.getElementById('alertBox2').innerHTML                 = '';
+  }
+
+  function inputError() {
+    const inp = document.getElementById('docInput');
+    inp.style.borderColor = 'var(--danger)';
+    inp.style.background  = 'var(--danger-lt)';
+    setTimeout(() => {
+      inp.style.borderColor = 'var(--border)';
+      inp.style.background  = 'var(--bg)';
+    }, 2500);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>

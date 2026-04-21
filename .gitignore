@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+cert.pem
+key.pem
+*.xlsx
+*.sql

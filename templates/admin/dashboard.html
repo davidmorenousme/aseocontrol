@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Full — Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+ 
+<nav>
+  <div class="brand">
+      <div class="brand-icon">
+          <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:44px; height:44px; border-radius:9px; object-fit:contain; display:block;">
+      </div>
+    <div class="brand-name">
+      Casa Full
+      <span>Panel Administrador</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="clock-pill" id="clock">00:00:00</div>
+    <div style="position:relative; cursor:pointer" onclick="toggleNotificaciones()">
+      <span style="font-size:1.2rem">🔔</span>
+      <span id="badge-notif" style="display:none; position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; border-radius:50%; width:18px; height:18px; font-size:0.65rem; font-weight:700; align-items:center; justify-content:center;">0</span>
+    </div>
+    <span style="font-size:0.82rem; color:var(--muted)">{{ admin_nombre }}</span>
+    <a href="/logout" style="font-size:0.82rem; color:var(--danger); text-decoration:none; font-weight:600;">Salir</a>
+  </div>
+</nav>
+ 
+<!-- Panel notificaciones -->
+<div id="panel-notif" style="display:none; position:fixed; top:65px; right:1.5rem; width:380px; background:var(--white); border:1.5px solid var(--border); border-radius:14px; box-shadow:var(--shadow-lg); z-index:300; overflow:hidden;">
+  <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center">
+    <div style="font-weight:700; font-size:0.85rem; color:var(--text)">🔔 Notificaciones</div>
+    <div style="display:flex; gap:8px">
+      <button onclick="marcarLeidas()" style="background:none; border:none; font-size:0.73rem; color:var(--green); cursor:pointer; font-weight:600;">✓ Marcar leídas</button>
+      <button onclick="eliminarTodas()" style="background:none; border:none; font-size:0.73rem; color:var(--danger); cursor:pointer; font-weight:600;">🗑 Borrar todas</button>
+    </div>
+  </div>
+  <div id="lista-notif" style="max-height:360px; overflow-y:auto">
+    <div style="padding:1.5rem; text-align:center; color:var(--muted); font-size:0.82rem">Sin notificaciones hoy</div>
+  </div>
+</div>
+ 
+<div class="view active">
+  <div class="admin-wrap">
+ 
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert-box alert-warn" style="margin-bottom:1rem">⚠️ {{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+ 
+    <div class="admin-header">
+      <div>
+        <div class="admin-title">Panel de <em>Administración</em></div>
+        <div class="admin-date">📅 {{ fecha_hoy }}</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+        <a href="/" class="btn-outline">← Ir al Kiosco</a>
+        <button class="btn-outline" onclick="document.getElementById('modal-reportes').style.display='flex'">📊 Exportar</button>
+        <button class="btn-outline" onclick="document.getElementById('modal-conjunto-nuevo').style.display='flex'">🏢 Nuevo Conjunto</button>
+        <button class="btn-outline" onclick="document.getElementById('modal-empleado').style.display='flex'">👤 Nuevo Empleado</button>
+        <button class="btn-green" onclick="document.getElementById('modal-novedad').style.display='flex'">+ Nueva Novedad</button>
+      </div>
+    </div>
+ 
+    <!-- Estadísticas globales — clicables -->
+    <div class="stats-row" style="grid-template-columns: repeat(5, 1fr)">
+ 
+      <div class="stat-card" onclick="verStat('presentes')" style="cursor:pointer">
+        <div class="stat-icon ic-green">✅</div>
+        <div>
+          <div class="stat-label">Presentes hoy</div>
+          <div class="stat-value">{{ presentes }}</div>
+        </div>
+      </div>
+ 
+      <div class="stat-card" onclick="verStat('permisos')" style="cursor:pointer">
+        <div class="stat-icon ic-blue">📋</div>
+        <div>
+          <div class="stat-label">Con permiso</div>
+          <div class="stat-value">{{ permisos }}</div>
+        </div>
+      </div>
+ 
+      <div class="stat-card" onclick="verStat('break')" style="cursor:pointer">
+        <div class="stat-icon ic-warn">☕</div>
+        <div>
+          <div class="stat-label">En break</div>
+          <div class="stat-value">{{ en_break }}</div>
+        </div>
+      </div>
+ 
+      <div class="stat-card" onclick="verStat('almuerzo')" style="cursor:pointer">
+        <div class="stat-icon ic-warn">🍽️</div>
+        <div>
+          <div class="stat-label">En almuerzo</div>
+          <div class="stat-value">{{ en_almuerzo }}</div>
+        </div>
+      </div>
+ 
+      <div class="stat-card" onclick="verStat('incapacidades')" style="cursor:pointer">
+        <div class="stat-icon ic-danger">🏥</div>
+        <div>
+          <div class="stat-label">Incapacidades</div>
+          <div class="stat-value">{{ incapacidades }}</div>
+        </div>
+      </div>
+ 
+    </div>
+ 
+    <!-- Tarjetas por conjunto -->
+    <div style="margin-bottom:1.5rem">
+      <div style="margin-bottom:1rem"><div class="panel-title">Estado por Conjunto</div></div>
+      <div id="grid-conjuntos">
+        {% for t in tarjetas %}
+        <div class="tarjeta-conjunto {% if t.presentes == t.total_empleados and t.total_empleados > 0 %}tarjeta-ok{% elif t.presentes == 0 %}tarjeta-vacia{% else %}tarjeta-parcial{% endif %}"
+          onclick="verConjunto({{ t.id }}, '{{ t.conjunto }}')">
+          <div class="tarjeta-nombre">{{ t.conjunto }}</div>
+          <div class="tarjeta-stats">
+            <div class="tarjeta-stat">
+              <div class="tarjeta-num verde">{{ t.presentes }}</div>
+              <div class="tarjeta-label">Presentes</div>
+            </div>
+            <div class="tarjeta-stat">
+              <div class="tarjeta-num amarillo">{{ t.en_break }}</div>
+              <div class="tarjeta-label">Break</div>
+            </div>
+            <div class="tarjeta-stat">
+              <div class="tarjeta-num amarillo">{{ t.en_almuerzo }}</div>
+              <div class="tarjeta-label">Almuerzo</div>
+            </div>
+            <div class="tarjeta-stat">
+              <div class="tarjeta-num rojo">{{ t.con_novedad }}</div>
+              <div class="tarjeta-label">Novedad</div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div style="color:var(--muted); font-size:0.85rem">No hay conjuntos registrados.</div>
+        {% endfor %}
+      </div>
+    </div>
+ 
+    <!-- Supernumerarios -->
+    {% if supernumerarios %}
+    <div style="margin-bottom:1.5rem">
+      <div style="margin-bottom:1rem"><div class="panel-title">Supernumerarios</div></div>
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th><th>Documento</th><th>Conjunto Hoy</th><th>Entrada</th><th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in supernumerarios %}
+            <tr>
+              <td>
+                <div class="emp-cell">
+                  <div class="mini-avatar">{{ s.nombre[:2].upper() }}</div>
+                  <div class="emp-cell-name">{{ s.nombre }}</div>
+                </div>
+              </td>
+              <td style="color:var(--muted)">{{ s.documento }}</td>
+              <td>
+                {% if s.conjunto_hoy != '—' %}
+                  <span style="background:var(--green-lt); color:var(--green); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">{{ s.conjunto_hoy }}</span>
+                {% else %}
+                  <span style="color:var(--muted); font-size:0.82rem">Sin registrar</span>
+                {% endif %}
+              </td>
+              <td>{{ s.entrada }}</td>
+              <td>
+                {% if s.estado == 'Presente' %}<span class="badge present">Presente</span>
+                {% elif s.estado == 'Break' %}<span class="badge lunch">Break</span>
+                {% elif s.estado == 'Almuerzo' %}<span class="badge lunch">Almuerzo</span>
+                {% elif s.estado == 'Salió' %}<span class="badge absent">Salió</span>
+                {% else %}<span class="badge absent">Sin registro</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+ 
+    <!-- Fila inferior -->
+    <div class="admin-grid">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Novedades Activas</div></div>
+        <div>
+          {% for n in novedades %}
+          <div class="mgmt-item">
+            <div>
+              <div class="mgmt-name">{{ n.nombre }}</div>
+              <div class="mgmt-detail">
+                {{ n.fecha_inicio.strftime('%d %b') }}
+                {% if n.fecha_fin %} – {{ n.fecha_fin.strftime('%d %b') }}{% endif %}
+                {% if n.descripcion %} · {{ n.descripcion[:30] }}{% endif %}
+              </div>
+            </div>
+            <span class="tag {{ n.tipo }}">{{ n.tipo.replace('_', ' ').capitalize() }}</span>
+          </div>
+          {% else %}
+          <div style="padding:1rem; text-align:center; color:var(--muted); font-size:0.82rem">Sin novedades registradas</div>
+          {% endfor %}
+        </div>
+      </div>
+ 
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Actividad Reciente</div></div>
+        <div>
+          {% for r in actividad %}
+          <div class="log-item">
+            <div class="log-dot {% if r.tipo == 'entrada' %}g{% elif r.tipo == 'salida_break' or r.tipo == 'salida_almuerzo' %}w{% elif r.tipo == 'regreso_break' or r.tipo == 'regreso_almuerzo' %}b{% else %}r{% endif %}"></div>
+            <div>
+              <div class="log-name">{{ r.nombre }}</div>
+              <div class="log-detail">
+                {% if r.tipo == 'entrada' %}Entrada
+                {% elif r.tipo == 'salida_break' %}Salida break
+                {% elif r.tipo == 'regreso_break' %}Regreso break
+                {% elif r.tipo == 'salida_almuerzo' %}Salida almuerzo
+                {% elif r.tipo == 'regreso_almuerzo' %}Regreso almuerzo
+                {% else %}Fin turno{% endif %}
+              </div>
+            </div>
+            <div class="log-time">{{ r.timestamp.strftime('%H:%M') }}</div>
+          </div>
+          {% else %}
+          <div style="padding:1rem; text-align:center; color:var(--muted); font-size:0.82rem">Sin actividad hoy</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+ 
+<!-- ══════════════ MODAL: Detalle stat card ══════════════ -->
+<div class="modal-overlay" id="modal-stat">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-stat-titulo">Detalle</div>
+      <button class="modal-close" onclick="cerrarModal('modal-stat')">✕</button>
+    </div>
+    <div id="modal-stat-body">
+      <div style="text-align:center; padding:2rem; color:var(--muted)">Cargando...</div>
+    </div>
+  </div>
+</div>
+ 
+ 
+<!-- ══════════════ MODAL: Detalle conjunto ══════════════ -->
+<div class="modal-overlay" id="modal-conjunto">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-conjunto-titulo">Conjunto</div>
+      <button class="modal-close" onclick="cerrarModal('modal-conjunto')">✕</button>
+    </div>
+    <div id="modal-conjunto-body">
+      <div style="text-align:center; padding:2rem; color:var(--muted)">Cargando...</div>
+    </div>
+  </div>
+</div>
+ 
+ 
+<!-- ══════════════ MODAL: Exportar ══════════════ -->
+<div class="modal-overlay" id="modal-reportes">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Exportar Reportes</div>
+      <button class="modal-close" onclick="cerrarModal('modal-reportes')">✕</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px">
+      <a href="/admin/exportar/empleados" class="btn-main" style="text-decoration:none; justify-content:flex-start; gap:12px">👥 Lista completa de empleados</a>
+      <a href="/admin/exportar/novedades" class="btn-main" style="text-decoration:none; justify-content:flex-start; gap:12px; background:var(--blue)">📋 Empleados con novedades activas</a>
+      <a href="/admin/exportar/retiros"   class="btn-main" style="text-decoration:none; justify-content:flex-start; gap:12px; background:var(--danger)">🚪 Historial de retiros</a>
+      <div style="border-top:1px solid var(--border); padding-top:10px">
+        <label style="font-size:0.73rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600; display:block; margin-bottom:8px">Reporte mensual de asistencia</label>
+        <div style="display:flex; gap:8px">
+          <select id="sel-mes" class="select-mini" style="padding:10px">
+            <option value="1">Enero</option><option value="2">Febrero</option>
+            <option value="3">Marzo</option><option value="4">Abril</option>
+            <option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option>
+            <option value="9">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+          <select id="sel-anio" class="select-mini" style="padding:10px">
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+          </select>
+          <button class="btn-green" onclick="exportarMensual()" style="white-space:nowrap">⬇ Descargar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+ 
+<!-- ══════════════ MODAL: Nueva novedad ══════════════ -->
+<div class="modal-overlay" id="modal-novedad">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Nueva Novedad</div>
+      <button class="modal-close" onclick="cerrarModal('modal-novedad')">✕</button>
+    </div>
+    <form method="POST" action="/admin/novedades">
+      <div class="input-group">
+        <label>Buscar empleado</label>
+        <input type="text" id="buscar-emp" class="mini-input" placeholder="Nombre o cédula..." oninput="filtrarEmpleados(this.value)" autocomplete="off">
+        <div class="emp-search-list" id="lista-emp">
+          {% for emp in empleados %}
+          <div class="emp-search-item"
+            data-id="{{ emp.id }}" data-nombre="{{ emp.nombre|lower }}"
+            data-doc="{{ emp.documento or '' }}"
+            data-display="{{ emp.nombre }} — {{ emp.documento or 'Sin cédula' }}"
+            onclick="seleccionarDesdeItem(this)">
+            <strong>{{ emp.nombre }}</strong>
+            <span>{{ emp.documento or 'Sin cédula' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="empleado_id" id="empleado-id-val" required>
+        <div class="emp-seleccionado" id="emp-seleccionado"></div>
+      </div>
+      <div class="input-group">
+        <label>Tipo de novedad</label>
+        <select name="tipo" class="select-mini" style="padding:12px" required onchange="mostrarCampos(this.value)">
+          <option value="">Seleccionar...</option>
+          <option value="permiso">Permiso</option>
+          <option value="incapacidad">Incapacidad</option>
+          <option value="vacaciones">Vacaciones</option>
+          <option value="cambio_horario">Cambio de horario</option>
+          <option value="retiro">Retiro</option>
+        </select>
+      </div>
+      <div class="campos-novedad" id="campos-rango">
+        <div class="mini-row">
+          <div class="input-group" style="margin:0"><label>Fecha inicio</label><input type="date" name="fecha_inicio" class="mini-input" style="margin:0;padding:10px"></div>
+          <div class="input-group" style="margin:0"><label>Fecha fin</label><input type="date" name="fecha_fin" class="mini-input" style="margin:0;padding:10px"></div>
+        </div>
+        <div class="input-group" style="margin-top:0.8rem"><label>Descripción</label><input type="text" name="descripcion" class="mini-input" placeholder="Motivo o detalle..."></div>
+      </div>
+      <div class="campos-novedad" id="campos-horario">
+        <div class="mini-row">
+          <div class="input-group" style="margin:0"><label>Hora entrada</label><input type="time" name="hora_entrada" class="mini-input" style="margin:0;padding:10px"></div>
+          <div class="input-group" style="margin:0"><label>Hora salida</label><input type="time" name="hora_salida" class="mini-input" style="margin:0;padding:10px"></div>
+        </div>
+        <div class="input-group" style="margin-top:0.8rem">
+          <label>Conjunto / Sede</label>
+          <select name="conjunto_id" class="select-mini" style="padding:12px">
+            <option value="">Sin cambio de sede</option>
+            {% for c in conjuntos %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="mini-row" style="margin-top:0.8rem">
+          <div class="input-group" style="margin:0"><label>Fecha inicio</label><input type="date" name="fecha_inicio_h" class="mini-input" style="margin:0;padding:10px"></div>
+          <div class="input-group" style="margin:0"><label>Fecha fin</label><input type="date" name="fecha_fin_h" class="mini-input" style="margin:0;padding:10px"></div>
+        </div>
+        <div class="input-group" style="margin-top:0.8rem"><label>Descripción</label><input type="text" name="descripcion_h" class="mini-input" placeholder="Motivo del cambio..."></div>
+      </div>
+      <div class="campos-novedad" id="campos-retiro">
+        <div class="campo-info">⚠️ El empleado será desactivado automáticamente.</div>
+        <div class="input-group"><label>Fecha de retiro</label><input type="date" name="fecha_retiro" class="mini-input"></div>
+        <div class="input-group"><label>Motivo</label><input type="text" name="descripcion_r" class="mini-input" placeholder="Motivo del retiro..."></div>
+      </div>
+      <button type="submit" class="btn-main" style="margin-top:1rem">Guardar Novedad</button>
+    </form>
+  </div>
+</div>
+ 
+ 
+<!-- ══════════════ MODAL: Nuevo empleado ══════════════ -->
+<div class="modal-overlay" id="modal-empleado">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">👤 Nuevo Empleado</div>
+      <button class="modal-close" onclick="cerrarModal('modal-empleado')">✕</button>
+    </div>
+    <form method="POST" action="/admin/empleados">
+      <div class="mini-row">
+        <div class="input-group" style="margin:0">
+          <label>Nombre completo *</label>
+          <input type="text" name="nombre" class="mini-input" style="padding:10px" placeholder="Ej: GARCIA LOPEZ MARIA" required>
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>Documento</label>
+          <input type="text" name="documento" class="mini-input" style="padding:10px" placeholder="Número de cédula">
+        </div>
+      </div>
+      <div class="mini-row" style="margin-top:0.8rem">
+        <div class="input-group" style="margin:0">
+          <label>Cargo *</label>
+          <select name="cargo" class="select-mini" style="padding:10px" required>
+            <option value="">Seleccionar...</option>
+            <option value="OPERARIA">Operaria</option>
+            <option value="TODERO">Todero</option>
+            <option value="JARDINERO">Jardinero</option>
+            <option value="JARDINERA">Jardinera</option>
+            <option value="COORDINADOR">Coordinador</option>
+            <option value="ASISTENTE GERENCIAL">Asistente Gerencial</option>
+            <option value="ADMINISTRATIVO">Administrativo</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>Teléfono</label>
+          <input type="text" name="telefono" class="mini-input" style="padding:10px" placeholder="Ej: 3001234567">
+        </div>
+      </div>
+      <div class="mini-row" style="margin-top:0.8rem">
+        <div class="input-group" style="margin:0">
+          <label>Tipo de empleado *</label>
+          <select name="tipo" id="tipo-empleado" class="select-mini" style="padding:10px" onchange="toggleConjunto(this.value)" required>
+            <option value="fijo">Fijo</option>
+            <option value="supernumerario">Supernumerario</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin:0" id="campo-conjunto-emp">
+          <label>Conjunto asignado</label>
+          <select name="conjunto_id" class="select-mini" style="padding:10px">
+            <option value="">Sin conjunto</option>
+            {% for c in conjuntos %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:0.8rem; padding:12px; background:var(--green-xl); border-radius:8px; border:1px solid var(--border)">
+        <div style="font-size:0.73rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600; margin-bottom:0.6rem">🕐 Horario de turno</div>
+        <div class="mini-row">
+          <div class="input-group" style="margin:0"><label>Hora entrada</label><input type="time" name="hora_entrada" class="mini-input" style="padding:10px" value="07:00"></div>
+          <div class="input-group" style="margin:0"><label>Hora salida</label><input type="time" name="hora_salida" class="mini-input" style="padding:10px" value="17:00"></div>
+        </div>
+      </div>
+      <button type="submit" class="btn-main" style="margin-top:1rem">✅ Crear Empleado</button>
+    </form>
+  </div>
+</div>
+ 
+ 
+<!-- ══════════════ MODAL: Nuevo conjunto ══════════════ -->
+<div class="modal-overlay" id="modal-conjunto-nuevo">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">🏢 Nuevo Conjunto</div>
+      <button class="modal-close" onclick="cerrarModal('modal-conjunto-nuevo')">✕</button>
+    </div>
+    <form method="POST" action="/admin/conjuntos">
+      <div class="input-group">
+        <label>Nombre del conjunto *</label>
+        <input type="text" name="nombre" class="mini-input" style="padding:10px" placeholder="Ej: Torres del Norte" required>
+      </div>
+      <div class="input-group">
+        <label>Dirección</label>
+        <input type="text" name="direccion" class="mini-input" style="padding:10px" placeholder="Ej: Calle 45 # 12-30">
+      </div>
+      <div class="campo-info" style="margin-top:0.5rem">💡 Para eliminar un conjunto hazlo desde la base de datos.</div>
+      <button type="submit" class="btn-main" style="margin-top:1rem">✅ Crear Conjunto</button>
+    </form>
+  </div>
+</div>
+ 
+ 
+<script>
+  function tick() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('es-CO', {hour12: false});
+  }
+  tick(); setInterval(tick, 1000);
+ 
+  // ── Cerrar modales ──
+  function cerrarModal(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+  ['modal-novedad','modal-conjunto','modal-reportes','modal-empleado','modal-conjunto-nuevo','modal-stat'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) {
+      if (e.target === this) cerrarModal(id);
+    });
+  });
+ 
+  // ── Exportar mensual ──
+  function exportarMensual() {
+    window.location.href = `/admin/exportar/mensual/${document.getElementById('sel-anio').value}/${document.getElementById('sel-mes').value}`;
+  }
+ 
+  // ── Toggle conjunto en modal empleado ──
+  function toggleConjunto(tipo) {
+    const campo = document.getElementById('campo-conjunto-emp');
+    const sel   = campo.querySelector('select');
+    campo.style.opacity = tipo === 'supernumerario' ? '0.4' : '1';
+    sel.disabled        = tipo === 'supernumerario';
+    if (tipo === 'supernumerario') sel.value = '';
+  }
+ 
+  // ══════════════════════════════════════════════════════
+  // STAT CARDS — detalle al hacer clic
+  // ══════════════════════════════════════════════════════
+  const statConfig = {
+    presentes:     { titulo: '✅ Presentes hoy',    url: '/admin/stats/presentes',     cols: ['Empleado','Documento','Conjunto','Entrada'] },
+    permisos:      { titulo: '📋 Con permiso hoy',  url: '/admin/stats/permisos',      cols: ['Empleado','Documento','Conjunto','Desde','Hasta','Descripción'] },
+    break:         { titulo: '☕ En break ahora',   url: '/admin/stats/break',         cols: ['Empleado','Documento','Conjunto','Salió'] },
+    almuerzo:      { titulo: '🍽️ En almuerzo ahora',url: '/admin/stats/almuerzo',      cols: ['Empleado','Documento','Conjunto','Salió','Minutos fuera'] },
+    incapacidades: { titulo: '🏥 Incapacidades',    url: '/admin/stats/incapacidades', cols: ['Empleado','Documento','Conjunto','Desde','Hasta','Descripción'] },
+  };
+ 
+  async function verStat(tipo) {
+    const cfg = statConfig[tipo];
+    document.getElementById('modal-stat-titulo').textContent = cfg.titulo;
+    document.getElementById('modal-stat-body').innerHTML =
+      '<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
+    document.getElementById('modal-stat').style.display = 'flex';
+ 
+    try {
+      const res  = await fetch(cfg.url);
+      const data = await res.json();
+ 
+      if (!data.length) {
+        document.getElementById('modal-stat-body').innerHTML =
+          '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem">Sin registros en este momento</div>';
+        return;
+      }
+ 
+      const ths = cfg.cols.map(c => `<th>${c}</th>`).join('');
+      let filas = '';
+ 
+      data.forEach(r => {
+        let celdas = '';
+        if (tipo === 'presentes') {
+          celdas = `
+            <td><div class="emp-cell">
+              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
+              <div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div>
+            </div></td>
+            <td>${r.documento}</td>
+            <td>${r.conjunto}</td>
+            <td><span class="badge present">${r.hora_entrada}</span></td>`;
+        } else if (tipo === 'break') {
+          celdas = `
+            <td><div class="emp-cell">
+              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
+              <div><div class="emp-cell-name">${r.nombre}</div></div>
+            </div></td>
+            <td>${r.documento}</td>
+            <td>${r.conjunto}</td>
+            <td><span class="badge lunch">${r.hora_salida}</span></td>`;
+        } else if (tipo === 'almuerzo') {
+          const color = r.minutos > 60 ? 'var(--danger)' : 'var(--warn)';
+          celdas = `
+            <td><div class="emp-cell">
+              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
+              <div><div class="emp-cell-name">${r.nombre}</div></div>
+            </div></td>
+            <td>${r.documento}</td>
+            <td>${r.conjunto}</td>
+            <td><span class="badge lunch">${r.hora_salida}</span></td>
+            <td><span style="font-weight:700;color:${color}">${r.minutos} min</span></td>`;
+        } else {
+          celdas = `
+            <td><div class="emp-cell">
+              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
+              <div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div>
+            </div></td>
+            <td>${r.documento}</td>
+            <td>${r.conjunto}</td>
+            <td>${r.fecha_inicio}</td>
+            <td>${r.fecha_fin}</td>
+            <td style="color:var(--muted);font-size:0.8rem">${r.descripcion}</td>`;
+        }
+        filas += `<tr>${celdas}</tr>`;
+      });
+ 
+      document.getElementById('modal-stat-body').innerHTML = `
+        <table>
+          <thead><tr>${ths}</tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`;
+ 
+    } catch(err) {
+      document.getElementById('modal-stat-body').innerHTML =
+        '<div style="padding:1.5rem;text-align:center;color:var(--danger)">Error al cargar datos</div>';
+    }
+  }
+ 
+  // ══════════════════════════════════════════════════════
+  // DETALLE CONJUNTO
+  // ══════════════════════════════════════════════════════
+  async function verConjunto(id, nombre) {
+    document.getElementById('modal-conjunto-titulo').textContent = nombre;
+    document.getElementById('modal-conjunto-body').innerHTML =
+      '<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
+    document.getElementById('modal-conjunto').style.display = 'flex';
+ 
+    try {
+      const res = await fetch(`/admin/conjunto/${id}`);
+      const empleados = await res.json();
+ 
+      if (!empleados.length) {
+        document.getElementById('modal-conjunto-body').innerHTML =
+          '<div style="padding:1.5rem;text-align:center;color:var(--muted)">Sin empleados asignados</div>';
+        return;
+      }
+ 
+      const estadoBadge = {
+        'Presente':'present','Break':'lunch','Almuerzo':'lunch',
+        'Salió':'absent','Sin registro':'absent',
+        'Permiso':'permit','Incapacidad':'incap','Vacaciones':'permit',
+      };
+ 
+      let html = '<table><thead><tr><th>Empleado</th><th>Entrada</th><th>Estado</th><th>Foto</th></tr></thead><tbody>';
+      empleados.forEach(e => {
+        const badge   = estadoBadge[e.estado] || 'absent';
+        const fotoBtn = e.foto
+          ? `<button onclick="verFoto('${e.foto}')" style="background:var(--green-lt);border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;color:var(--green);font-weight:600;cursor:pointer;">Ver foto</button>`
+          : `<span style="color:var(--muted);font-size:0.75rem">Sin foto</span>`;
+        html += `<tr>
+          <td><div class="emp-cell">
+            <div class="mini-avatar">${e.nombre.slice(0,2).toUpperCase()}</div>
+            <div><div class="emp-cell-name">${e.nombre}</div><div class="emp-cell-doc">${e.documento}</div></div>
+          </div></td>
+          <td>${e.entrada}</td>
+          <td><span class="badge ${badge}">${e.estado}</span></td>
+          <td>${fotoBtn}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('modal-conjunto-body').innerHTML = html;
+ 
+    } catch(err) {
+      document.getElementById('modal-conjunto-body').innerHTML =
+        '<div style="padding:1.5rem;text-align:center;color:var(--danger)">Error al cargar datos</div>';
+    }
+  }
+ 
+  function verFoto(foto) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `<div style="position:relative;max-width:90vw;max-height:90vh">
+      <img src="data:image/jpeg;base64,${foto}" style="max-width:100%;max-height:90vh;border-radius:12px;display:block;">
+      <button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:-14px;right:-14px;background:var(--danger);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:1rem;cursor:pointer;font-weight:700;">✕</button>
+    </div>`;
+    modal.addEventListener('click', function(e) { if (e.target === this) this.remove(); });
+    document.body.appendChild(modal);
+  }
+ 
+  // ══════════════════════════════════════════════════════
+  // BUSCADOR EMPLEADOS (modal novedad)
+  // ══════════════════════════════════════════════════════
+  function filtrarEmpleados(q) {
+    const lista = document.getElementById('lista-emp');
+    const items = lista.querySelectorAll('.emp-search-item');
+    q = q.toLowerCase().trim();
+    if (!q) { lista.style.display = 'none'; return; }
+    let visibles = 0;
+    items.forEach(item => {
+      const match = item.dataset.nombre.includes(q) || item.dataset.doc.includes(q);
+      item.style.display = match ? 'block' : 'none';
+      if (match) visibles++;
+    });
+    lista.style.display = visibles > 0 ? 'block' : 'none';
+  }
+ 
+  function seleccionarDesdeItem(el) {
+    document.getElementById('empleado-id-val').value = el.dataset.id;
+    document.getElementById('buscar-emp').value      = '';
+    document.getElementById('lista-emp').style.display = 'none';
+    const sel = document.getElementById('emp-seleccionado');
+    sel.textContent  = '✓ ' + el.dataset.display;
+    sel.style.display = 'block';
+  }
+ 
+  function mostrarCampos(tipo) {
+    document.querySelectorAll('.campos-novedad').forEach(el => el.style.display = 'none');
+    if (['permiso','incapacidad','vacaciones'].includes(tipo))
+      document.getElementById('campos-rango').style.display = 'block';
+    else if (tipo === 'cambio_horario')
+      document.getElementById('campos-horario').style.display = 'block';
+    else if (tipo === 'retiro')
+      document.getElementById('campos-retiro').style.display = 'block';
+  }
+ 
+  // ══════════════════════════════════════════════════════
+  // NOTIFICACIONES
+  // ══════════════════════════════════════════════════════
+  let panelAbierto = false;
+ 
+  function toggleNotificaciones() {
+    panelAbierto = !panelAbierto;
+    document.getElementById('panel-notif').style.display = panelAbierto ? 'block' : 'none';
+    if (panelAbierto) cargarNotificaciones();
+  }
+ 
+  async function cargarNotificaciones() {
+    try {
+      const res  = await fetch('/admin/notificaciones');
+      const data = await res.json();
+ 
+      const badge = document.getElementById('badge-notif');
+      badge.textContent   = data.sin_leer;
+      badge.style.display = data.sin_leer > 0 ? 'flex' : 'none';
+ 
+      const lista = document.getElementById('lista-notif');
+      if (!data.notificaciones.length) {
+        lista.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.82rem">Sin notificaciones hoy</div>';
+        return;
+      }
+ 
+      lista.innerHTML = data.notificaciones.map(n => `
+        <div class="notif-item ${n.leida ? '' : 'no-leida'}" id="notif-${n.id}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div>${n.mensaje}</div>
+            <div class="notif-hora">${n.hora}</div>
+          </div>
+          <button onclick="eliminarNotif(${n.id})"
+            style="flex-shrink:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:2px 4px;border-radius:4px;line-height:1"
+            title="Eliminar">🗑</button>
+        </div>
+      `).join('');
+ 
+    } catch(e) {
+      console.error('Error cargando notificaciones', e);
+    }
+  }
+ 
+  async function marcarLeidas() {
+    await fetch('/admin/notificaciones/leer', { method: 'POST' });
+    document.getElementById('badge-notif').style.display = 'none';
+    cargarNotificaciones();
+  }
+ 
+  async function eliminarNotif(id) {
+    await fetch(`/admin/notificaciones/eliminar/${id}`, { method: 'DELETE' });
+    document.getElementById(`notif-${id}`)?.remove();
+    // Recarga para actualizar badge
+    cargarNotificaciones();
+  }
+ 
+  async function eliminarTodas() {
+    if (!confirm('¿Eliminar todas las notificaciones de hoy?')) return;
+    await fetch('/admin/notificaciones/eliminar-todas', { method: 'DELETE' });
+    cargarNotificaciones();
+  }
+ 
+  cargarNotificaciones();
+  setInterval(cargarNotificaciones, 60000);
+ 
+  document.addEventListener('click', function(e) {
+    const panel   = document.getElementById('panel-notif');
+    const campana = e.target.closest('[onclick="toggleNotificaciones()"]');
+    if (!campana && !panel.contains(e.target)) {
+      panel.style.display = 'none';
+      panelAbierto = false;
+    }
+  });
+</script>
+</body>
+</html>
