@@ -20,6 +20,11 @@
   </div>
   <div class="nav-right">
     <div class="clock-pill" id="clock">00:00:00</div>
+    <div id="sync-indicator" title="Auto-actualización activa"
+      style="display:flex; align-items:center; gap:4px; font-size:0.72rem; color:var(--muted); user-select:none; cursor:default">
+      <span id="sync-dot" style="width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; transition:opacity 0.3s"></span>
+      <span id="sync-label">En vivo</span>
+    </div>
     <div style="position:relative; cursor:pointer" onclick="toggleNotificaciones()">
       <span style="font-size:1.2rem">🔔</span>
       <span id="badge-notif" style="display:none; position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; border-radius:50%; width:18px; height:18px; font-size:0.65rem; font-weight:700; align-items:center; justify-content:center;">0</span>
@@ -29,7 +34,6 @@
   </div>
 </nav>
  
-<!-- Panel notificaciones -->
 <div id="panel-notif" style="display:none; position:fixed; top:65px; right:1.5rem; width:380px; background:var(--white); border:1.5px solid var(--border); border-radius:14px; box-shadow:var(--shadow-lg); z-index:300; overflow:hidden;">
   <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center">
     <div style="font-weight:700; font-size:0.85rem; color:var(--text)">🔔 Notificaciones</div>
@@ -57,61 +61,64 @@
         <div class="admin-title">Panel de <em>Administración</em></div>
         <div class="admin-date">📅 {{ fecha_hoy }}</div>
       </div>
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
-        <a href="/" class="btn-outline">← Ir al Kiosco</a>
-        <button class="btn-outline" onclick="document.getElementById('modal-reportes').style.display='flex'">📊 Exportar</button>
-        <button class="btn-outline" onclick="document.getElementById('modal-conjunto-nuevo').style.display='flex'">🏢 Nuevo Conjunto</button>
-        <button class="btn-outline" onclick="document.getElementById('modal-empleado').style.display='flex'">👤 Nuevo Empleado</button>
-        <button class="btn-green" onclick="document.getElementById('modal-novedad').style.display='flex'">+ Nueva Novedad</button>
+<div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+
+        <a href="/" class="btn-outline" style="font-size:0.78rem; padding:7px 11px">
+          ← Kiosco
+        </a>
+
+        <div style="width:1px; height:26px; background:var(--border); margin:0 3px"></div>
+
+        <button class="btn-outline" style="font-size:0.78rem; padding:7px 11px"
+          onclick="document.getElementById('modal-empleado').style.display='flex'">
+          👤 Empleado
+        </button>
+        <button class="btn-outline" style="font-size:0.78rem; padding:7px 11px"
+          onclick="document.getElementById('modal-conjunto-nuevo').style.display='flex'">
+          🏢 Conjunto
+        </button>
+        <button class="btn-outline" style="font-size:0.78rem; padding:7px 11px"
+          onclick="abrirSemanaLaboral()">
+          📅 Semana laboral
+        </button>
+
+        <div style="width:1px; height:26px; background:var(--border); margin:0 3px"></div>
+
+        <button class="btn-outline" style="font-size:0.78rem; padding:7px 11px"
+          onclick="document.getElementById('modal-reportes').style.display='flex'">
+          📊 Exportar
+        </button>
+        <button class="btn-green" style="font-size:0.82rem; padding:8px 14px"
+          onclick="document.getElementById('modal-novedad').style.display='flex'">
+          + Nueva Novedad
+        </button>
+
       </div>
     </div>
  
-    <!-- Estadísticas globales — clicables -->
     <div class="stats-row" style="grid-template-columns: repeat(5, 1fr)">
- 
       <div class="stat-card" onclick="verStat('presentes')" style="cursor:pointer">
         <div class="stat-icon ic-green">✅</div>
-        <div>
-          <div class="stat-label">Presentes hoy</div>
-          <div class="stat-value">{{ presentes }}</div>
-        </div>
+        <div><div class="stat-label">Presentes hoy</div><div class="stat-value">{{ presentes }}</div></div>
       </div>
- 
       <div class="stat-card" onclick="verStat('permisos')" style="cursor:pointer">
         <div class="stat-icon ic-blue">📋</div>
-        <div>
-          <div class="stat-label">Con permiso</div>
-          <div class="stat-value">{{ permisos }}</div>
-        </div>
+        <div><div class="stat-label">Con permiso</div><div class="stat-value">{{ permisos }}</div></div>
       </div>
- 
       <div class="stat-card" onclick="verStat('break')" style="cursor:pointer">
         <div class="stat-icon ic-warn">☕</div>
-        <div>
-          <div class="stat-label">En break</div>
-          <div class="stat-value">{{ en_break }}</div>
-        </div>
+        <div><div class="stat-label">En break</div><div class="stat-value">{{ en_break }}</div></div>
       </div>
- 
       <div class="stat-card" onclick="verStat('almuerzo')" style="cursor:pointer">
         <div class="stat-icon ic-warn">🍽️</div>
-        <div>
-          <div class="stat-label">En almuerzo</div>
-          <div class="stat-value">{{ en_almuerzo }}</div>
-        </div>
+        <div><div class="stat-label">En almuerzo</div><div class="stat-value">{{ en_almuerzo }}</div></div>
       </div>
- 
       <div class="stat-card" onclick="verStat('incapacidades')" style="cursor:pointer">
         <div class="stat-icon ic-danger">🏥</div>
-        <div>
-          <div class="stat-label">Incapacidades</div>
-          <div class="stat-value">{{ incapacidades }}</div>
-        </div>
+        <div><div class="stat-label">Incapacidades</div><div class="stat-value">{{ incapacidades }}</div></div>
       </div>
- 
     </div>
  
-    <!-- Tarjetas por conjunto -->
     <div style="margin-bottom:1.5rem">
       <div style="margin-bottom:1rem"><div class="panel-title">Estado por Conjunto</div></div>
       <div id="grid-conjuntos">
@@ -120,22 +127,10 @@
           onclick="verConjunto({{ t.id }}, '{{ t.conjunto }}')">
           <div class="tarjeta-nombre">{{ t.conjunto }}</div>
           <div class="tarjeta-stats">
-            <div class="tarjeta-stat">
-              <div class="tarjeta-num verde">{{ t.presentes }}</div>
-              <div class="tarjeta-label">Presentes</div>
-            </div>
-            <div class="tarjeta-stat">
-              <div class="tarjeta-num amarillo">{{ t.en_break }}</div>
-              <div class="tarjeta-label">Break</div>
-            </div>
-            <div class="tarjeta-stat">
-              <div class="tarjeta-num amarillo">{{ t.en_almuerzo }}</div>
-              <div class="tarjeta-label">Almuerzo</div>
-            </div>
-            <div class="tarjeta-stat">
-              <div class="tarjeta-num rojo">{{ t.con_novedad }}</div>
-              <div class="tarjeta-label">Novedad</div>
-            </div>
+            <div class="tarjeta-stat"><div class="tarjeta-num verde">{{ t.presentes }}</div><div class="tarjeta-label">Presentes</div></div>
+            <div class="tarjeta-stat"><div class="tarjeta-num amarillo">{{ t.en_break }}</div><div class="tarjeta-label">Break</div></div>
+            <div class="tarjeta-stat"><div class="tarjeta-num amarillo">{{ t.en_almuerzo }}</div><div class="tarjeta-label">Almuerzo</div></div>
+            <div class="tarjeta-stat"><div class="tarjeta-num rojo">{{ t.con_novedad }}</div><div class="tarjeta-label">Novedad</div></div>
           </div>
         </div>
         {% else %}
@@ -144,26 +139,16 @@
       </div>
     </div>
  
-    <!-- Supernumerarios -->
     {% if supernumerarios %}
     <div style="margin-bottom:1.5rem">
       <div style="margin-bottom:1rem"><div class="panel-title">Supernumerarios</div></div>
       <div class="panel">
         <table>
-          <thead>
-            <tr>
-              <th>Nombre</th><th>Documento</th><th>Conjunto Hoy</th><th>Entrada</th><th>Estado</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Nombre</th><th>Documento</th><th>Conjunto Hoy</th><th>Entrada</th><th>Estado</th></tr></thead>
           <tbody>
             {% for s in supernumerarios %}
             <tr>
-              <td>
-                <div class="emp-cell">
-                  <div class="mini-avatar">{{ s.nombre[:2].upper() }}</div>
-                  <div class="emp-cell-name">{{ s.nombre }}</div>
-                </div>
-              </td>
+              <td><div class="emp-cell"><div class="mini-avatar">{{ s.nombre[:2].upper() }}</div><div class="emp-cell-name">{{ s.nombre }}</div></div></td>
               <td style="color:var(--muted)">{{ s.documento }}</td>
               <td>
                 {% if s.conjunto_hoy != '—' %}
@@ -188,7 +173,6 @@
     </div>
     {% endif %}
  
-    <!-- Fila inferior -->
     <div class="admin-grid">
       <div class="panel">
         <div class="panel-header"><div class="panel-title">Novedades Activas</div></div>
@@ -200,7 +184,13 @@
               <div class="mgmt-detail">
                 {{ n.fecha_inicio.strftime('%d %b') }}
                 {% if n.fecha_fin %} – {{ n.fecha_fin.strftime('%d %b') }}{% endif %}
-                {% if n.descripcion %} · {{ n.descripcion[:30] }}{% endif %}
+                {% if n.tipo == 'permiso' and n.hora_entrada_permiso %}
+                  · 🕐 Entrada: {{ n.hora_entrada_permiso|string|truncate(5, True, '') }}
+                {% elif n.tipo == 'permiso' and n.hora_salida_permiso %}
+                  · 🕔 Salida: {{ n.hora_salida_permiso|string|truncate(5, True, '') }}
+                {% elif n.descripcion %}
+                  · {{ n.descripcion[:30] }}
+                {% endif %}
               </div>
             </div>
             <span class="tag {{ n.tipo }}">{{ n.tipo.replace('_', ' ').capitalize() }}</span>
@@ -210,7 +200,6 @@
           {% endfor %}
         </div>
       </div>
- 
       <div class="panel">
         <div class="panel-header"><div class="panel-title">Actividad Reciente</div></div>
         <div>
@@ -238,37 +227,31 @@
     </div>
   </div>
 </div>
- 
- 
-<!-- ══════════════ MODAL: Detalle stat card ══════════════ -->
+
+
+<!-- ══════ MODAL: Detalle stat ══════ -->
 <div class="modal-overlay" id="modal-stat">
   <div class="modal-box" style="max-width:600px">
     <div class="modal-header">
       <div class="modal-title" id="modal-stat-titulo">Detalle</div>
       <button class="modal-close" onclick="cerrarModal('modal-stat')">✕</button>
     </div>
-    <div id="modal-stat-body">
-      <div style="text-align:center; padding:2rem; color:var(--muted)">Cargando...</div>
-    </div>
+    <div id="modal-stat-body"><div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div></div>
   </div>
 </div>
- 
- 
-<!-- ══════════════ MODAL: Detalle conjunto ══════════════ -->
+
+<!-- ══════ MODAL: Detalle conjunto ══════ -->
 <div class="modal-overlay" id="modal-conjunto">
   <div class="modal-box" style="max-width:600px">
     <div class="modal-header">
       <div class="modal-title" id="modal-conjunto-titulo">Conjunto</div>
       <button class="modal-close" onclick="cerrarModal('modal-conjunto')">✕</button>
     </div>
-    <div id="modal-conjunto-body">
-      <div style="text-align:center; padding:2rem; color:var(--muted)">Cargando...</div>
-    </div>
+    <div id="modal-conjunto-body"><div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div></div>
   </div>
 </div>
- 
- 
-<!-- ══════════════ MODAL: Exportar ══════════════ -->
+
+<!-- ══════ MODAL: Exportar ══════ -->
 <div class="modal-overlay" id="modal-reportes">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-header">
@@ -276,24 +259,20 @@
       <button class="modal-close" onclick="cerrarModal('modal-reportes')">✕</button>
     </div>
     <div style="display:flex; flex-direction:column; gap:10px">
-      <a href="/admin/exportar/empleados" class="btn-main" style="text-decoration:none; justify-content:flex-start; gap:12px">👥 Lista completa de empleados</a>
-      <a href="/admin/exportar/novedades" class="btn-main" style="text-decoration:none; justify-content:flex-start; gap:12px; background:var(--blue)">📋 Empleados con novedades activas</a>
-      <a href="/admin/exportar/retiros"   class="btn-main" style="text-decoration:none; justify-content:flex-start; gap:12px; background:var(--danger)">🚪 Historial de retiros</a>
-      <div style="border-top:1px solid var(--border); padding-top:10px">
-        <label style="font-size:0.73rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600; display:block; margin-bottom:8px">Reporte mensual de asistencia</label>
-        <div style="display:flex; gap:8px">
+      <a href="/admin/exportar/empleados" class="btn-main" style="text-decoration:none;justify-content:flex-start;gap:12px">👥 Lista completa de empleados</a>
+      <a href="/admin/exportar/novedades" class="btn-main" style="text-decoration:none;justify-content:flex-start;gap:12px;background:var(--blue)">📋 Empleados con novedades activas</a>
+      <a href="/admin/exportar/retiros"   class="btn-main" style="text-decoration:none;justify-content:flex-start;gap:12px;background:var(--danger)">🚪 Historial de retiros</a>
+      <div style="border-top:1px solid var(--border);padding-top:10px">
+        <label style="font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;display:block;margin-bottom:8px">Reporte mensual de asistencia</label>
+        <div style="display:flex;gap:8px">
           <select id="sel-mes" class="select-mini" style="padding:10px">
-            <option value="1">Enero</option><option value="2">Febrero</option>
-            <option value="3">Marzo</option><option value="4">Abril</option>
-            <option value="5">Mayo</option><option value="6">Junio</option>
-            <option value="7">Julio</option><option value="8">Agosto</option>
-            <option value="9">Septiembre</option><option value="10">Octubre</option>
-            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
           </select>
           <select id="sel-anio" class="select-mini" style="padding:10px">
-            <option value="2025">2025</option>
-            <option value="2026" selected>2026</option>
-            <option value="2027">2027</option>
+            <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
           </select>
           <button class="btn-green" onclick="exportarMensual()" style="white-space:nowrap">⬇ Descargar</button>
         </div>
@@ -301,9 +280,8 @@
     </div>
   </div>
 </div>
- 
- 
-<!-- ══════════════ MODAL: Nueva novedad ══════════════ -->
+
+<!-- ══════ MODAL: Nueva novedad ══════ -->
 <div class="modal-overlay" id="modal-novedad">
   <div class="modal-box">
     <div class="modal-header">
@@ -316,19 +294,17 @@
         <input type="text" id="buscar-emp" class="mini-input" placeholder="Nombre o cédula..." oninput="filtrarEmpleados(this.value)" autocomplete="off">
         <div class="emp-search-list" id="lista-emp">
           {% for emp in empleados %}
-          <div class="emp-search-item"
-            data-id="{{ emp.id }}" data-nombre="{{ emp.nombre|lower }}"
-            data-doc="{{ emp.documento or '' }}"
-            data-display="{{ emp.nombre }} — {{ emp.documento or 'Sin cédula' }}"
+          <div class="emp-search-item" data-id="{{ emp.id }}" data-nombre="{{ emp.nombre|lower }}"
+            data-doc="{{ emp.documento or '' }}" data-display="{{ emp.nombre }} — {{ emp.documento or 'Sin cédula' }}"
             onclick="seleccionarDesdeItem(this)">
-            <strong>{{ emp.nombre }}</strong>
-            <span>{{ emp.documento or 'Sin cédula' }}</span>
+            <strong>{{ emp.nombre }}</strong><span>{{ emp.documento or 'Sin cédula' }}</span>
           </div>
           {% endfor %}
         </div>
         <input type="hidden" name="empleado_id" id="empleado-id-val" required>
         <div class="emp-seleccionado" id="emp-seleccionado"></div>
       </div>
+
       <div class="input-group">
         <label>Tipo de novedad</label>
         <select name="tipo" class="select-mini" style="padding:12px" required onchange="mostrarCampos(this.value)">
@@ -337,17 +313,67 @@
           <option value="incapacidad">Incapacidad</option>
           <option value="vacaciones">Vacaciones</option>
           <option value="cambio_horario">Cambio de horario</option>
+          <option value="compensatorio">🔄 Día compensatorio</option>
           <option value="retiro">Retiro</option>
         </select>
       </div>
-      <div class="campos-novedad" id="campos-rango">
+
+      <!-- ── Rango general (permiso / incapacidad / vacaciones) ── -->
+      <div class="campos-novedad" id="campos-rango" style="display:none">
         <div class="mini-row">
           <div class="input-group" style="margin:0"><label>Fecha inicio</label><input type="date" name="fecha_inicio" class="mini-input" style="margin:0;padding:10px"></div>
           <div class="input-group" style="margin:0"><label>Fecha fin</label><input type="date" name="fecha_fin" class="mini-input" style="margin:0;padding:10px"></div>
         </div>
         <div class="input-group" style="margin-top:0.8rem"><label>Descripción</label><input type="text" name="descripcion" class="mini-input" placeholder="Motivo o detalle..."></div>
+
+        <!-- ── Sub-tipo permiso (solo visible cuando tipo = permiso) ── -->
+        <div id="campos-subtipo-permiso" style="display:none; margin-top:0.8rem">
+          <div style="height:1px; background:var(--border); margin-bottom:0.8rem"></div>
+          <label style="font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px">Modalidad del permiso</label>
+          <select name="subtipo_permiso" class="select-mini" style="padding:12px" onchange="mostrarSubtipoPermiso(this.value)">
+            <option value="dia_completo">📅 Día completo (ausencia justificada)</option>
+            <option value="entrada_tarde">🕐 Entrada tarde</option>
+            <option value="salida_temprana">🕔 Salida temprana</option>
+          </select>
+
+          <!-- Hora entrada tarde -->
+          <div id="campo-hora-entrada-permiso" style="display:none; margin-top:0.7rem">
+            <div class="campo-info" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;margin-bottom:0.6rem">
+              🕐 El sistema <strong>no alertará ausencia</strong> hasta pasada esta hora + 15 min de tolerancia.
+            </div>
+            <div class="input-group" style="margin:0">
+              <label>Hora de entrada autorizada</label>
+              <input type="time" name="hora_entrada_permiso" class="mini-input" style="margin:0;padding:10px">
+            </div>
+          </div>
+
+          <!-- Hora salida temprana -->
+          <div id="campo-hora-salida-permiso" style="display:none; margin-top:0.7rem">
+            <div class="campo-info" style="background:#fefce8;color:#854d0e;border-color:#fde68a;margin-bottom:0.6rem">
+              🕔 El empleado <strong>entrará normalmente</strong> pero tiene autorización de salida anticipada.
+            </div>
+            <div class="input-group" style="margin:0">
+              <label>Hora de salida autorizada</label>
+              <input type="time" name="hora_salida_permiso" class="mini-input" style="margin:0;padding:10px">
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="campos-novedad" id="campos-horario">
+
+      <!-- ── Compensatorio ── -->
+      <div class="campos-novedad" id="campos-compensatorio" style="display:none">
+        <div class="campo-info" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">
+          📅 El sistema <strong>no generará alerta de ausencia</strong> en los días seleccionados.
+        </div>
+        <div class="mini-row" style="margin-top:0.8rem">
+          <div class="input-group" style="margin:0"><label>Fecha inicio</label><input type="date" name="fecha_inicio_comp" class="mini-input" style="margin:0;padding:10px"></div>
+          <div class="input-group" style="margin:0"><label>Fecha fin</label><input type="date" name="fecha_fin_comp" class="mini-input" style="margin:0;padding:10px"></div>
+        </div>
+        <div class="input-group" style="margin-top:0.8rem"><label>Motivo</label><input type="text" name="descripcion_comp" class="mini-input" placeholder="Ej: Compensatorio por horas extras..."></div>
+      </div>
+
+      <!-- ── Cambio de horario ── -->
+      <div class="campos-novedad" id="campos-horario" style="display:none">
         <div class="mini-row">
           <div class="input-group" style="margin:0"><label>Hora entrada</label><input type="time" name="hora_entrada" class="mini-input" style="margin:0;padding:10px"></div>
           <div class="input-group" style="margin:0"><label>Hora salida</label><input type="time" name="hora_salida" class="mini-input" style="margin:0;padding:10px"></div>
@@ -365,18 +391,64 @@
         </div>
         <div class="input-group" style="margin-top:0.8rem"><label>Descripción</label><input type="text" name="descripcion_h" class="mini-input" placeholder="Motivo del cambio..."></div>
       </div>
-      <div class="campos-novedad" id="campos-retiro">
+
+      <!-- ── Retiro ── -->
+      <div class="campos-novedad" id="campos-retiro" style="display:none">
         <div class="campo-info">⚠️ El empleado será desactivado automáticamente.</div>
         <div class="input-group"><label>Fecha de retiro</label><input type="date" name="fecha_retiro" class="mini-input"></div>
         <div class="input-group"><label>Motivo</label><input type="text" name="descripcion_r" class="mini-input" placeholder="Motivo del retiro..."></div>
       </div>
+
       <button type="submit" class="btn-main" style="margin-top:1rem">Guardar Novedad</button>
     </form>
   </div>
 </div>
- 
- 
-<!-- ══════════════ MODAL: Nuevo empleado ══════════════ -->
+
+<!-- ══════ MODAL: Semana Laboral ══════ -->
+<div class="modal-overlay" id="modal-semana-laboral">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">📅 Semana Laboral</div>
+      <button class="modal-close" onclick="cerrarModalSL()">✕</button>
+    </div>
+    <div class="input-group">
+      <label>Buscar empleado</label>
+      <input type="text" id="sl-buscar-emp" class="mini-input" placeholder="Nombre o cédula..." oninput="filtrarEmpleadosSL(this.value)" autocomplete="off">
+      <div class="emp-search-list" id="sl-lista-emp">
+        {% for emp in empleados %}
+        <div class="emp-search-item" data-id="{{ emp.id }}" data-nombre="{{ emp.nombre|lower }}"
+          data-doc="{{ emp.documento or '' }}" data-display="{{ emp.nombre }} — {{ emp.documento or 'Sin cédula' }}"
+          onclick="seleccionarEmpleadoSL(this)">
+          <strong>{{ emp.nombre }}</strong><span>{{ emp.documento or 'Sin cédula' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="emp-seleccionado" id="sl-emp-seleccionado"></div>
+    </div>
+
+    <div id="sl-dias-wrap" style="display:none; margin-top:1rem">
+      <label style="font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;display:block;margin-bottom:0.7rem">
+        Días que trabaja
+      </label>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:0.8rem">
+        <button type="button" id="sl-lunes"     onclick="toggleDia('lunes')"     class="sl-dia-btn">Lun</button>
+        <button type="button" id="sl-martes"    onclick="toggleDia('martes')"    class="sl-dia-btn">Mar</button>
+        <button type="button" id="sl-miercoles" onclick="toggleDia('miercoles')" class="sl-dia-btn">Mié</button>
+        <button type="button" id="sl-jueves"    onclick="toggleDia('jueves')"    class="sl-dia-btn">Jue</button>
+        <button type="button" id="sl-viernes"   onclick="toggleDia('viernes')"   class="sl-dia-btn">Vie</button>
+        <button type="button" id="sl-sabado"    onclick="toggleDia('sabado')"    class="sl-dia-btn">Sáb</button>
+        <button type="button" id="sl-domingo"   onclick="toggleDia('domingo')"   class="sl-dia-btn">Dom</button>
+      </div>
+      <div id="sl-aviso-finde" style="display:none;padding:10px 12px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:8px;font-size:0.8rem;margin-bottom:0.8rem">
+        ⚠️ Configuraste trabajo en fin de semana. Verifica que sea correcto.
+      </div>
+      <button class="btn-main" onclick="guardarSemanaLaboral()" style="width:100%">✅ Guardar semana laboral</button>
+      <div id="sl-feedback" style="margin-top:0.6rem;font-size:0.82rem;text-align:center;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: Nuevo empleado ══════ -->
 <div class="modal-overlay" id="modal-empleado">
   <div class="modal-box">
     <div class="modal-header">
@@ -385,40 +457,27 @@
     </div>
     <form method="POST" action="/admin/empleados">
       <div class="mini-row">
-        <div class="input-group" style="margin:0">
-          <label>Nombre completo *</label>
-          <input type="text" name="nombre" class="mini-input" style="padding:10px" placeholder="Ej: GARCIA LOPEZ MARIA" required>
-        </div>
-        <div class="input-group" style="margin:0">
-          <label>Documento</label>
-          <input type="text" name="documento" class="mini-input" style="padding:10px" placeholder="Número de cédula">
-        </div>
+        <div class="input-group" style="margin:0"><label>Nombre completo *</label><input type="text" name="nombre" class="mini-input" style="padding:10px" placeholder="Ej: GARCIA LOPEZ MARIA" required></div>
+        <div class="input-group" style="margin:0"><label>Documento</label><input type="text" name="documento" class="mini-input" style="padding:10px" placeholder="Número de cédula"></div>
       </div>
       <div class="mini-row" style="margin-top:0.8rem">
         <div class="input-group" style="margin:0">
           <label>Cargo *</label>
           <select name="cargo" class="select-mini" style="padding:10px" required>
             <option value="">Seleccionar...</option>
-            <option value="OPERARIA">Operaria</option>
-            <option value="TODERO">Todero</option>
-            <option value="JARDINERO">Jardinero</option>
-            <option value="JARDINERA">Jardinera</option>
-            <option value="COORDINADOR">Coordinador</option>
-            <option value="ASISTENTE GERENCIAL">Asistente Gerencial</option>
+            <option value="OPERARIA">Operaria</option><option value="TODERO">Todero</option>
+            <option value="JARDINERO">Jardinero</option><option value="JARDINERA">Jardinera</option>
+            <option value="COORDINADOR">Coordinador</option><option value="ASISTENTE GERENCIAL">Asistente Gerencial</option>
             <option value="ADMINISTRATIVO">Administrativo</option>
           </select>
         </div>
-        <div class="input-group" style="margin:0">
-          <label>Teléfono</label>
-          <input type="text" name="telefono" class="mini-input" style="padding:10px" placeholder="Ej: 3001234567">
-        </div>
+        <div class="input-group" style="margin:0"><label>Teléfono</label><input type="text" name="telefono" class="mini-input" style="padding:10px" placeholder="Ej: 3001234567"></div>
       </div>
       <div class="mini-row" style="margin-top:0.8rem">
         <div class="input-group" style="margin:0">
           <label>Tipo de empleado *</label>
           <select name="tipo" id="tipo-empleado" class="select-mini" style="padding:10px" onchange="toggleConjunto(this.value)" required>
-            <option value="fijo">Fijo</option>
-            <option value="supernumerario">Supernumerario</option>
+            <option value="fijo">Fijo</option><option value="supernumerario">Supernumerario</option>
           </select>
         </div>
         <div class="input-group" style="margin:0" id="campo-conjunto-emp">
@@ -429,8 +488,8 @@
           </select>
         </div>
       </div>
-      <div style="margin-top:0.8rem; padding:12px; background:var(--green-xl); border-radius:8px; border:1px solid var(--border)">
-        <div style="font-size:0.73rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600; margin-bottom:0.6rem">🕐 Horario de turno</div>
+      <div style="margin-top:0.8rem;padding:12px;background:var(--green-xl);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:0.6rem">🕐 Horario de turno</div>
         <div class="mini-row">
           <div class="input-group" style="margin:0"><label>Hora entrada</label><input type="time" name="hora_entrada" class="mini-input" style="padding:10px" value="07:00"></div>
           <div class="input-group" style="margin:0"><label>Hora salida</label><input type="time" name="hora_salida" class="mini-input" style="padding:10px" value="17:00"></div>
@@ -440,9 +499,8 @@
     </form>
   </div>
 </div>
- 
- 
-<!-- ══════════════ MODAL: Nuevo conjunto ══════════════ -->
+
+<!-- ══════ MODAL: Nuevo conjunto ══════ -->
 <div class="modal-overlay" id="modal-conjunto-nuevo">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-header">
@@ -450,44 +508,51 @@
       <button class="modal-close" onclick="cerrarModal('modal-conjunto-nuevo')">✕</button>
     </div>
     <form method="POST" action="/admin/conjuntos">
-      <div class="input-group">
-        <label>Nombre del conjunto *</label>
-        <input type="text" name="nombre" class="mini-input" style="padding:10px" placeholder="Ej: Torres del Norte" required>
-      </div>
-      <div class="input-group">
-        <label>Dirección</label>
-        <input type="text" name="direccion" class="mini-input" style="padding:10px" placeholder="Ej: Calle 45 # 12-30">
-      </div>
+      <div class="input-group"><label>Nombre del conjunto *</label><input type="text" name="nombre" class="mini-input" style="padding:10px" placeholder="Ej: Torres del Norte" required></div>
+      <div class="input-group"><label>Dirección</label><input type="text" name="direccion" class="mini-input" style="padding:10px" placeholder="Ej: Calle 45 # 12-30"></div>
       <div class="campo-info" style="margin-top:0.5rem">💡 Para eliminar un conjunto hazlo desde la base de datos.</div>
       <button type="submit" class="btn-main" style="margin-top:1rem">✅ Crear Conjunto</button>
     </form>
   </div>
 </div>
- 
- 
+
+
+<style>
+  .sl-dia-btn {
+    min-width:52px; padding:8px 4px; border-radius:10px;
+    border:2px solid var(--border); background:var(--bg);
+    color:var(--muted); font-size:0.8rem; font-weight:700;
+    cursor:pointer; transition:all 0.15s; user-select:none;
+  }
+  .sl-dia-btn.activo {
+    background:var(--green); color:#fff; border-color:var(--green);
+  }
+</style>
+
+
 <script>
   function tick() {
     document.getElementById('clock').textContent =
       new Date().toLocaleTimeString('es-CO', {hour12: false});
   }
   tick(); setInterval(tick, 1000);
- 
-  // ── Cerrar modales ──
-  function cerrarModal(id) {
-    document.getElementById(id).style.display = 'none';
-  }
-  ['modal-novedad','modal-conjunto','modal-reportes','modal-empleado','modal-conjunto-nuevo','modal-stat'].forEach(id => {
+
+  function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
+
+  ['modal-novedad','modal-conjunto','modal-reportes','modal-empleado',
+   'modal-conjunto-nuevo','modal-stat','modal-semana-laboral'].forEach(id => {
     document.getElementById(id).addEventListener('click', function(e) {
-      if (e.target === this) cerrarModal(id);
+      if (e.target === this) {
+        cerrarModal(id);
+        if (id === 'modal-semana-laboral') limpiarSL();
+      }
     });
   });
- 
-  // ── Exportar mensual ──
+
   function exportarMensual() {
     window.location.href = `/admin/exportar/mensual/${document.getElementById('sel-anio').value}/${document.getElementById('sel-mes').value}`;
   }
- 
-  // ── Toggle conjunto en modal empleado ──
+
   function toggleConjunto(tipo) {
     const campo = document.getElementById('campo-conjunto-emp');
     const sel   = campo.querySelector('select');
@@ -495,265 +560,336 @@
     sel.disabled        = tipo === 'supernumerario';
     if (tipo === 'supernumerario') sel.value = '';
   }
- 
+
+
   // ══════════════════════════════════════════════════════
-  // STAT CARDS — detalle al hacer clic
+  // AUTO-ACTUALIZACIÓN — polling cada 10 s
+  // ══════════════════════════════════════════════════════
+  (function() {
+    let fingerprint = null, recargaPendiente = false;
+    const dot = document.getElementById('sync-dot');
+    const lbl = document.getElementById('sync-label');
+
+    function pulsar() { dot.style.opacity='0.2'; setTimeout(()=>dot.style.opacity='1',300); }
+
+    function hayModalAbierto() {
+      return [...document.querySelectorAll('.modal-overlay')].some(m=>m.style.display==='flex');
+    }
+
+    function recargarSiPuede() {
+      if (hayModalAbierto()) {
+        recargaPendiente = true;
+        lbl.textContent = 'Actualización lista';
+        dot.style.background = 'var(--warn)';
+      } else { location.reload(); }
+    }
+
+    document.addEventListener('click', ()=>{ if(recargaPendiente && !hayModalAbierto()) location.reload(); });
+
+    async function checkEstado() {
+      try {
+        const res  = await fetch('/api/dashboard-estado');
+        if (!res.ok) return;
+        const data = await res.json();
+        pulsar();
+        if (fingerprint === null) { fingerprint = data.fingerprint; return; }
+        if (data.fingerprint !== fingerprint) { fingerprint = data.fingerprint; recargarSiPuede(); }
+      } catch(_) { dot.style.background = 'var(--muted)'; }
+    }
+
+    checkEstado();
+    setInterval(checkEstado, 10000);
+  })();
+
+
+  // ══════════════════════════════════════════════════════
+  // STAT CARDS
   // ══════════════════════════════════════════════════════
   const statConfig = {
-    presentes:     { titulo: '✅ Presentes hoy',    url: '/admin/stats/presentes',     cols: ['Empleado','Documento','Conjunto','Entrada'] },
-    permisos:      { titulo: '📋 Con permiso hoy',  url: '/admin/stats/permisos',      cols: ['Empleado','Documento','Conjunto','Desde','Hasta','Descripción'] },
-    break:         { titulo: '☕ En break ahora',   url: '/admin/stats/break',         cols: ['Empleado','Documento','Conjunto','Salió'] },
-    almuerzo:      { titulo: '🍽️ En almuerzo ahora',url: '/admin/stats/almuerzo',      cols: ['Empleado','Documento','Conjunto','Salió','Minutos fuera'] },
-    incapacidades: { titulo: '🏥 Incapacidades',    url: '/admin/stats/incapacidades', cols: ['Empleado','Documento','Conjunto','Desde','Hasta','Descripción'] },
+    presentes:     { titulo:'✅ Presentes hoy',    url:'/admin/stats/presentes',     cols:['Empleado','Documento','Conjunto','Entrada'] },
+    permisos:      { titulo:'📋 Con permiso hoy',  url:'/admin/stats/permisos',      cols:['Empleado','Documento','Conjunto','Desde','Hasta','Descripción'] },
+    break:         { titulo:'☕ En break ahora',   url:'/admin/stats/break',         cols:['Empleado','Documento','Conjunto','Salió'] },
+    almuerzo:      { titulo:'🍽️ En almuerzo ahora',url:'/admin/stats/almuerzo',      cols:['Empleado','Documento','Conjunto','Salió','Minutos fuera'] },
+    incapacidades: { titulo:'🏥 Incapacidades',    url:'/admin/stats/incapacidades', cols:['Empleado','Documento','Conjunto','Desde','Hasta','Descripción'] },
   };
- 
+
   async function verStat(tipo) {
     const cfg = statConfig[tipo];
     document.getElementById('modal-stat-titulo').textContent = cfg.titulo;
-    document.getElementById('modal-stat-body').innerHTML =
-      '<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
+    document.getElementById('modal-stat-body').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
     document.getElementById('modal-stat').style.display = 'flex';
- 
     try {
       const res  = await fetch(cfg.url);
       const data = await res.json();
- 
       if (!data.length) {
-        document.getElementById('modal-stat-body').innerHTML =
-          '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem">Sin registros en este momento</div>';
+        document.getElementById('modal-stat-body').innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem">Sin registros en este momento</div>';
         return;
       }
- 
-      const ths = cfg.cols.map(c => `<th>${c}</th>`).join('');
+      const ths = cfg.cols.map(c=>`<th>${c}</th>`).join('');
       let filas = '';
- 
       data.forEach(r => {
         let celdas = '';
-        if (tipo === 'presentes') {
-          celdas = `
-            <td><div class="emp-cell">
-              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
-              <div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div>
-            </div></td>
-            <td>${r.documento}</td>
-            <td>${r.conjunto}</td>
-            <td><span class="badge present">${r.hora_entrada}</span></td>`;
-        } else if (tipo === 'break') {
-          celdas = `
-            <td><div class="emp-cell">
-              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
-              <div><div class="emp-cell-name">${r.nombre}</div></div>
-            </div></td>
-            <td>${r.documento}</td>
-            <td>${r.conjunto}</td>
-            <td><span class="badge lunch">${r.hora_salida}</span></td>`;
-        } else if (tipo === 'almuerzo') {
-          const color = r.minutos > 60 ? 'var(--danger)' : 'var(--warn)';
-          celdas = `
-            <td><div class="emp-cell">
-              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
-              <div><div class="emp-cell-name">${r.nombre}</div></div>
-            </div></td>
-            <td>${r.documento}</td>
-            <td>${r.conjunto}</td>
-            <td><span class="badge lunch">${r.hora_salida}</span></td>
-            <td><span style="font-weight:700;color:${color}">${r.minutos} min</span></td>`;
+        const av = n => `<div class="mini-avatar">${n.slice(0,2).toUpperCase()}</div>`;
+        if (tipo==='presentes') {
+          celdas=`<td><div class="emp-cell">${av(r.nombre)}<div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div></div></td><td>${r.documento}</td><td>${r.conjunto}</td><td><span class="badge present">${r.hora_entrada}</span></td>`;
+        } else if (tipo==='break') {
+          celdas=`<td><div class="emp-cell">${av(r.nombre)}<div><div class="emp-cell-name">${r.nombre}</div></div></div></td><td>${r.documento}</td><td>${r.conjunto}</td><td><span class="badge lunch">${r.hora_salida}</span></td>`;
+        } else if (tipo==='almuerzo') {
+          const c=r.minutos>60?'var(--danger)':'var(--warn)';
+          celdas=`<td><div class="emp-cell">${av(r.nombre)}<div><div class="emp-cell-name">${r.nombre}</div></div></div></td><td>${r.documento}</td><td>${r.conjunto}</td><td><span class="badge lunch">${r.hora_salida}</span></td><td><span style="font-weight:700;color:${c}">${r.minutos} min</span></td>`;
+        } else if (tipo==='permisos') {
+          // Muestra indicador de entrada tarde / salida temprana si aplica
+          let detalle = r.descripcion;
+          if (r.hora_entrada_permiso) detalle = `🕐 Entrada tarde: ${r.hora_entrada_permiso}`;
+          else if (r.hora_salida_permiso) detalle = `🕔 Salida temprana: ${r.hora_salida_permiso}`;
+          celdas=`<td><div class="emp-cell">${av(r.nombre)}<div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div></div></td><td>${r.documento}</td><td>${r.conjunto}</td><td>${r.fecha_inicio}</td><td>${r.fecha_fin}</td><td style="color:var(--muted);font-size:0.8rem">${detalle}</td>`;
         } else {
-          celdas = `
-            <td><div class="emp-cell">
-              <div class="mini-avatar">${r.nombre.slice(0,2).toUpperCase()}</div>
-              <div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div>
-            </div></td>
-            <td>${r.documento}</td>
-            <td>${r.conjunto}</td>
-            <td>${r.fecha_inicio}</td>
-            <td>${r.fecha_fin}</td>
-            <td style="color:var(--muted);font-size:0.8rem">${r.descripcion}</td>`;
+          celdas=`<td><div class="emp-cell">${av(r.nombre)}<div><div class="emp-cell-name">${r.nombre}</div><div class="emp-cell-doc">${r.documento}</div></div></div></td><td>${r.documento}</td><td>${r.conjunto}</td><td>${r.fecha_inicio}</td><td>${r.fecha_fin}</td><td style="color:var(--muted);font-size:0.8rem">${r.descripcion}</td>`;
         }
         filas += `<tr>${celdas}</tr>`;
       });
- 
-      document.getElementById('modal-stat-body').innerHTML = `
-        <table>
-          <thead><tr>${ths}</tr></thead>
-          <tbody>${filas}</tbody>
-        </table>`;
- 
-    } catch(err) {
-      document.getElementById('modal-stat-body').innerHTML =
-        '<div style="padding:1.5rem;text-align:center;color:var(--danger)">Error al cargar datos</div>';
+      document.getElementById('modal-stat-body').innerHTML = `<table><thead><tr>${ths}</tr></thead><tbody>${filas}</tbody></table>`;
+    } catch(_) {
+      document.getElementById('modal-stat-body').innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--danger)">Error al cargar datos</div>';
     }
   }
- 
+
+
   // ══════════════════════════════════════════════════════
   // DETALLE CONJUNTO
   // ══════════════════════════════════════════════════════
   async function verConjunto(id, nombre) {
     document.getElementById('modal-conjunto-titulo').textContent = nombre;
-    document.getElementById('modal-conjunto-body').innerHTML =
-      '<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
+    document.getElementById('modal-conjunto-body').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Cargando...</div>';
     document.getElementById('modal-conjunto').style.display = 'flex';
- 
     try {
       const res = await fetch(`/admin/conjunto/${id}`);
       const empleados = await res.json();
- 
-      if (!empleados.length) {
-        document.getElementById('modal-conjunto-body').innerHTML =
-          '<div style="padding:1.5rem;text-align:center;color:var(--muted)">Sin empleados asignados</div>';
-        return;
-      }
- 
-      const estadoBadge = {
-        'Presente':'present','Break':'lunch','Almuerzo':'lunch',
-        'Salió':'absent','Sin registro':'absent',
-        'Permiso':'permit','Incapacidad':'incap','Vacaciones':'permit',
-      };
- 
+      if (!empleados.length) { document.getElementById('modal-conjunto-body').innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--muted)">Sin empleados asignados</div>'; return; }
+      const eb = {'Presente':'present','Break':'lunch','Almuerzo':'lunch','Salió':'absent','Sin registro':'absent','Permiso':'permit','Incapacidad':'incap','Vacaciones':'permit'};
       let html = '<table><thead><tr><th>Empleado</th><th>Entrada</th><th>Estado</th><th>Foto</th></tr></thead><tbody>';
       empleados.forEach(e => {
-        const badge   = estadoBadge[e.estado] || 'absent';
-        const fotoBtn = e.foto
-          ? `<button onclick="verFoto('${e.foto}')" style="background:var(--green-lt);border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;color:var(--green);font-weight:600;cursor:pointer;">Ver foto</button>`
-          : `<span style="color:var(--muted);font-size:0.75rem">Sin foto</span>`;
-        html += `<tr>
-          <td><div class="emp-cell">
-            <div class="mini-avatar">${e.nombre.slice(0,2).toUpperCase()}</div>
-            <div><div class="emp-cell-name">${e.nombre}</div><div class="emp-cell-doc">${e.documento}</div></div>
-          </div></td>
-          <td>${e.entrada}</td>
-          <td><span class="badge ${badge}">${e.estado}</span></td>
-          <td>${fotoBtn}</td>
-        </tr>`;
+        const badge = eb[e.estado]||'absent';
+        const fotoBtn = e.foto ? `<button onclick="verFoto('${e.foto}')" style="background:var(--green-lt);border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;color:var(--green);font-weight:600;cursor:pointer;">Ver foto</button>` : `<span style="color:var(--muted);font-size:0.75rem">Sin foto</span>`;
+        html += `<tr><td><div class="emp-cell"><div class="mini-avatar">${e.nombre.slice(0,2).toUpperCase()}</div><div><div class="emp-cell-name">${e.nombre}</div><div class="emp-cell-doc">${e.documento}</div></div></div></td><td>${e.entrada}</td><td><span class="badge ${badge}">${e.estado}</span></td><td>${fotoBtn}</td></tr>`;
       });
       html += '</tbody></table>';
       document.getElementById('modal-conjunto-body').innerHTML = html;
- 
-    } catch(err) {
-      document.getElementById('modal-conjunto-body').innerHTML =
-        '<div style="padding:1.5rem;text-align:center;color:var(--danger)">Error al cargar datos</div>';
-    }
+    } catch(_) { document.getElementById('modal-conjunto-body').innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--danger)">Error al cargar datos</div>'; }
   }
- 
+
   function verFoto(foto) {
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:flex;align-items:center;justify-content:center;';
-    modal.innerHTML = `<div style="position:relative;max-width:90vw;max-height:90vh">
-      <img src="data:image/jpeg;base64,${foto}" style="max-width:100%;max-height:90vh;border-radius:12px;display:block;">
-      <button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:-14px;right:-14px;background:var(--danger);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:1rem;cursor:pointer;font-weight:700;">✕</button>
-    </div>`;
-    modal.addEventListener('click', function(e) { if (e.target === this) this.remove(); });
-    document.body.appendChild(modal);
+    const m = document.createElement('div');
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:flex;align-items:center;justify-content:center;';
+    m.innerHTML = `<div style="position:relative;max-width:90vw;max-height:90vh"><img src="data:image/jpeg;base64,${foto}" style="max-width:100%;max-height:90vh;border-radius:12px;display:block;"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:-14px;right:-14px;background:var(--danger);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:1rem;cursor:pointer;font-weight:700;">✕</button></div>`;
+    m.addEventListener('click', function(e){ if(e.target===this) this.remove(); });
+    document.body.appendChild(m);
   }
- 
+
+
   // ══════════════════════════════════════════════════════
-  // BUSCADOR EMPLEADOS (modal novedad)
+  // BUSCADOR EMPLEADOS (novedad)
   // ══════════════════════════════════════════════════════
   function filtrarEmpleados(q) {
     const lista = document.getElementById('lista-emp');
     const items = lista.querySelectorAll('.emp-search-item');
     q = q.toLowerCase().trim();
-    if (!q) { lista.style.display = 'none'; return; }
-    let visibles = 0;
-    items.forEach(item => {
-      const match = item.dataset.nombre.includes(q) || item.dataset.doc.includes(q);
-      item.style.display = match ? 'block' : 'none';
-      if (match) visibles++;
-    });
-    lista.style.display = visibles > 0 ? 'block' : 'none';
+    if (!q) { lista.style.display='none'; return; }
+    let v = 0;
+    items.forEach(i => { const m=i.dataset.nombre.includes(q)||i.dataset.doc.includes(q); i.style.display=m?'block':'none'; if(m)v++; });
+    lista.style.display = v>0 ? 'block' : 'none';
   }
- 
+
   function seleccionarDesdeItem(el) {
     document.getElementById('empleado-id-val').value = el.dataset.id;
     document.getElementById('buscar-emp').value      = '';
     document.getElementById('lista-emp').style.display = 'none';
     const sel = document.getElementById('emp-seleccionado');
-    sel.textContent  = '✓ ' + el.dataset.display;
+    sel.textContent = '✓ ' + el.dataset.display;
     sel.style.display = 'block';
   }
- 
+
+  // ── Mostrar sección principal según tipo de novedad ──
   function mostrarCampos(tipo) {
-    document.querySelectorAll('.campos-novedad').forEach(el => el.style.display = 'none');
-    if (['permiso','incapacidad','vacaciones'].includes(tipo))
+    document.querySelectorAll('.campos-novedad').forEach(el => el.style.display='none');
+
+    if (['permiso','incapacidad','vacaciones'].includes(tipo)) {
       document.getElementById('campos-rango').style.display = 'block';
-    else if (tipo === 'cambio_horario')
-      document.getElementById('campos-horario').style.display = 'block';
-    else if (tipo === 'retiro')
-      document.getElementById('campos-retiro').style.display = 'block';
+
+      // Sub-tipo solo visible para permiso
+      const subtipoDiv = document.getElementById('campos-subtipo-permiso');
+      if (tipo === 'permiso') {
+        subtipoDiv.style.display = 'block';
+        // Resetear a "día completo" al cambiar al tipo permiso
+        const sel = subtipoDiv.querySelector('select');
+        sel.value = 'dia_completo';
+        mostrarSubtipoPermiso('dia_completo');
+      } else {
+        subtipoDiv.style.display = 'none';
+        document.getElementById('campo-hora-entrada-permiso').style.display = 'none';
+        document.getElementById('campo-hora-salida-permiso').style.display  = 'none';
+      }
+    }
+    else if (tipo === 'cambio_horario') document.getElementById('campos-horario').style.display = 'block';
+    else if (tipo === 'retiro')         document.getElementById('campos-retiro').style.display  = 'block';
+    else if (tipo === 'compensatorio')  document.getElementById('campos-compensatorio').style.display = 'block';
   }
- 
+
+  // ── Mostrar campo de hora según sub-tipo de permiso ──
+  function mostrarSubtipoPermiso(valor) {
+    document.getElementById('campo-hora-entrada-permiso').style.display =
+      valor === 'entrada_tarde'   ? 'block' : 'none';
+    document.getElementById('campo-hora-salida-permiso').style.display  =
+      valor === 'salida_temprana' ? 'block' : 'none';
+  }
+
+
+  // ══════════════════════════════════════════════════════
+  // SEMANA LABORAL
+  // ══════════════════════════════════════════════════════
+  const DIAS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  let slEmpId = null;
+
+  function abrirSemanaLaboral() {
+    limpiarSL();
+    document.getElementById('modal-semana-laboral').style.display = 'flex';
+  }
+
+  function cerrarModalSL() {
+    cerrarModal('modal-semana-laboral');
+    limpiarSL();
+  }
+
+  function limpiarSL() {
+    slEmpId = null;
+    document.getElementById('sl-buscar-emp').value               = '';
+    document.getElementById('sl-lista-emp').style.display        = 'none';
+    document.getElementById('sl-emp-seleccionado').style.display = 'none';
+    document.getElementById('sl-dias-wrap').style.display        = 'none';
+    document.getElementById('sl-feedback').style.display         = 'none';
+    DIAS.forEach(d => setDia(d, false));
+  }
+
+  function filtrarEmpleadosSL(q) {
+    const lista = document.getElementById('sl-lista-emp');
+    const items = lista.querySelectorAll('.emp-search-item');
+    q = q.toLowerCase().trim();
+    if (!q) { lista.style.display='none'; return; }
+    let v = 0;
+    items.forEach(i => { const m=i.dataset.nombre.includes(q)||i.dataset.doc.includes(q); i.style.display=m?'block':'none'; if(m)v++; });
+    lista.style.display = v>0 ? 'block' : 'none';
+  }
+
+  async function seleccionarEmpleadoSL(el) {
+    slEmpId = el.dataset.id;
+    document.getElementById('sl-buscar-emp').value               = '';
+    document.getElementById('sl-lista-emp').style.display        = 'none';
+    const sel = document.getElementById('sl-emp-seleccionado');
+    sel.textContent  = '✓ ' + el.dataset.display;
+    sel.style.display = 'block';
+    document.getElementById('sl-feedback').style.display = 'none';
+    try {
+      const res  = await fetch(`/admin/semana-laboral/${slEmpId}`);
+      const dias = await res.json();
+      DIAS.forEach(d => setDia(d, Boolean(dias[d])));
+    } catch(_) { DIAS.slice(0,5).forEach(d => setDia(d, true)); }
+    document.getElementById('sl-dias-wrap').style.display = 'block';
+    actualizarAvisoFinde();
+  }
+
+  function setDia(dia, activo) {
+    const btn = document.getElementById(`sl-${dia}`);
+    if (!btn) return;
+    btn.classList.toggle('activo', activo);
+    btn.dataset.activo = activo ? '1' : '0';
+  }
+
+  function toggleDia(dia) {
+    const btn = document.getElementById(`sl-${dia}`);
+    setDia(dia, btn.dataset.activo !== '1');
+    actualizarAvisoFinde();
+  }
+
+  function actualizarAvisoFinde() {
+    const finde = ['sabado','domingo'].some(d => document.getElementById(`sl-${d}`)?.dataset.activo==='1');
+    document.getElementById('sl-aviso-finde').style.display = finde ? 'block' : 'none';
+  }
+
+  async function guardarSemanaLaboral() {
+    if (!slEmpId) return;
+    const payload = { empleado_id: parseInt(slEmpId) };
+    DIAS.forEach(d => payload[d] = document.getElementById(`sl-${d}`)?.dataset.activo==='1');
+
+    const fb = document.getElementById('sl-feedback');
+    fb.style.display = 'none';
+    try {
+      const res  = await fetch('/admin/semana-laboral', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        fb.textContent='✅ Semana laboral guardada'; fb.style.color='var(--green)'; fb.style.display='block';
+        setTimeout(()=>cerrarModalSL(), 1400);
+      } else { throw new Error(); }
+    } catch(_) { fb.textContent='❌ Error al guardar. Intenta de nuevo.'; fb.style.color='var(--danger)'; fb.style.display='block'; }
+  }
+
+
   // ══════════════════════════════════════════════════════
   // NOTIFICACIONES
   // ══════════════════════════════════════════════════════
   let panelAbierto = false;
- 
+
   function toggleNotificaciones() {
     panelAbierto = !panelAbierto;
     document.getElementById('panel-notif').style.display = panelAbierto ? 'block' : 'none';
     if (panelAbierto) cargarNotificaciones();
   }
- 
+
   async function cargarNotificaciones() {
     try {
       const res  = await fetch('/admin/notificaciones');
       const data = await res.json();
- 
       const badge = document.getElementById('badge-notif');
       badge.textContent   = data.sin_leer;
       badge.style.display = data.sin_leer > 0 ? 'flex' : 'none';
- 
       const lista = document.getElementById('lista-notif');
       if (!data.notificaciones.length) {
         lista.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.82rem">Sin notificaciones hoy</div>';
         return;
       }
- 
       lista.innerHTML = data.notificaciones.map(n => `
-        <div class="notif-item ${n.leida ? '' : 'no-leida'}" id="notif-${n.id}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div>
-            <div>${n.mensaje}</div>
-            <div class="notif-hora">${n.hora}</div>
-          </div>
-          <button onclick="eliminarNotif(${n.id})"
-            style="flex-shrink:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:2px 4px;border-radius:4px;line-height:1"
-            title="Eliminar">🗑</button>
-        </div>
-      `).join('');
- 
-    } catch(e) {
-      console.error('Error cargando notificaciones', e);
-    }
+        <div class="notif-item ${n.leida?'':'no-leida'}" id="notif-${n.id}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div><div>${n.mensaje}</div><div class="notif-hora">${n.hora}</div></div>
+          <button onclick="eliminarNotif(${n.id})" style="flex-shrink:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:2px 4px;border-radius:4px;line-height:1" title="Eliminar">🗑</button>
+        </div>`).join('');
+    } catch(e) { console.error('Error notificaciones', e); }
   }
- 
+
   async function marcarLeidas() {
-    await fetch('/admin/notificaciones/leer', { method: 'POST' });
-    document.getElementById('badge-notif').style.display = 'none';
+    await fetch('/admin/notificaciones/leer', {method:'POST'});
+    document.getElementById('badge-notif').style.display='none';
     cargarNotificaciones();
   }
- 
+
   async function eliminarNotif(id) {
-    await fetch(`/admin/notificaciones/eliminar/${id}`, { method: 'DELETE' });
+    await fetch(`/admin/notificaciones/eliminar/${id}`, {method:'DELETE'});
     document.getElementById(`notif-${id}`)?.remove();
-    // Recarga para actualizar badge
     cargarNotificaciones();
   }
- 
+
   async function eliminarTodas() {
     if (!confirm('¿Eliminar todas las notificaciones de hoy?')) return;
-    await fetch('/admin/notificaciones/eliminar-todas', { method: 'DELETE' });
+    await fetch('/admin/notificaciones/eliminar-todas', {method:'DELETE'});
     cargarNotificaciones();
   }
- 
+
   cargarNotificaciones();
-  setInterval(cargarNotificaciones, 60000);
- 
+
   document.addEventListener('click', function(e) {
     const panel   = document.getElementById('panel-notif');
     const campana = e.target.closest('[onclick="toggleNotificaciones()"]');
-    if (!campana && !panel.contains(e.target)) {
-      panel.style.display = 'none';
-      panelAbierto = false;
-    }
+    if (!campana && !panel.contains(e.target)) { panel.style.display='none'; panelAbierto=false; }
   });
 </script>
 </body>

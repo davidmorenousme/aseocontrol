@@ -1,0 +1,8 @@
+Flask==3.1.0
+flask-mysqldb==2.0.0
+python-dotenv==1.0.1
+bcrypt==4.2.1
+Pillow==11.1.0
+openpyxl==3.1.5
+APScheduler==3.10.4
+pyOpenSSL==24.3.0

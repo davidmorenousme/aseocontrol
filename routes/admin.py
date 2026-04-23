@@ -3,14 +3,14 @@ from flask_mysqldb import MySQL
 from datetime import date, datetime
 from functools import wraps
 import base64
- 
+
 admin = Blueprint('admin', __name__)
 mysql = None
- 
+
 def init_mysql(mysql_instance):
     global mysql
     mysql = mysql_instance
- 
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -18,21 +18,25 @@ def login_required(f):
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated
- 
- 
+
+
 @admin.route('/admin')
 @login_required
 def dashboard():
     cur = mysql.connection.cursor()
     hoy = date.today()
- 
+
     cur.execute("""
         SELECT COUNT(DISTINCT empleado_id) as total
         FROM registros
         WHERE DATE(timestamp) = %s AND tipo = 'entrada'
-    """, (hoy,))
+        AND empleado_id NOT IN (
+            SELECT empleado_id FROM registros
+            WHERE DATE(timestamp) = %s AND tipo = 'salida'
+        )
+    """, (hoy, hoy))
     presentes = cur.fetchone()['total']
- 
+
     cur.execute("""
         SELECT COUNT(DISTINCT empleado_id) as total
         FROM registros
@@ -43,7 +47,7 @@ def dashboard():
         )
     """, (hoy, hoy))
     en_break = cur.fetchone()['total']
- 
+
     cur.execute("""
         SELECT COUNT(DISTINCT empleado_id) as total
         FROM registros
@@ -54,7 +58,7 @@ def dashboard():
         )
     """, (hoy, hoy))
     en_almuerzo = cur.fetchone()['total']
- 
+
     cur.execute("""
         SELECT COUNT(*) as total FROM novedades
         WHERE tipo = 'permiso'
@@ -62,7 +66,7 @@ def dashboard():
         AND (fecha_fin >= %s OR fecha_fin IS NULL)
     """, (hoy, hoy))
     permisos = cur.fetchone()['total']
- 
+
     cur.execute("""
         SELECT COUNT(*) as total FROM novedades
         WHERE tipo = 'incapacidad'
@@ -70,29 +74,51 @@ def dashboard():
         AND (fecha_fin >= %s OR fecha_fin IS NULL)
     """, (hoy, hoy))
     incapacidades = cur.fetchone()['total']
- 
+
     cur.execute("""
         SELECT
             c.id, c.nombre as conjunto,
             COUNT(DISTINCT e.id) as total_empleados,
-            COUNT(DISTINCT CASE WHEN r.tipo = 'entrada'
-                AND DATE(r.timestamp) = %s THEN r.empleado_id END) as presentes,
-            COUNT(DISTINCT CASE WHEN r.tipo = 'salida_break'
+
+            COUNT(DISTINCT CASE
+                WHEN r.tipo = 'entrada'
                 AND DATE(r.timestamp) = %s
-                AND r.empleado_id NOT IN (
-                    SELECT empleado_id FROM registros
-                    WHERE tipo = 'regreso_break' AND DATE(timestamp) = %s
-                ) THEN r.empleado_id END) as en_break,
-            COUNT(DISTINCT CASE WHEN r.tipo = 'salida_almuerzo'
+                AND NOT EXISTS (
+                    SELECT 1 FROM registros r_sal
+                    WHERE r_sal.empleado_id = r.empleado_id
+                    AND r_sal.tipo = 'salida'
+                    AND DATE(r_sal.timestamp) = %s
+                )
+                THEN r.empleado_id END) as presentes,
+
+            COUNT(DISTINCT CASE
+                WHEN r.tipo = 'salida_break'
                 AND DATE(r.timestamp) = %s
-                AND r.empleado_id NOT IN (
-                    SELECT empleado_id FROM registros
-                    WHERE tipo = 'regreso_almuerzo' AND DATE(timestamp) = %s
-                ) THEN r.empleado_id END) as en_almuerzo,
-            COUNT(DISTINCT CASE WHEN n.tipo IN ('incapacidad','permiso','vacaciones')
+                AND NOT EXISTS (
+                    SELECT 1 FROM registros r_rb
+                    WHERE r_rb.empleado_id = r.empleado_id
+                    AND r_rb.tipo = 'regreso_break'
+                    AND DATE(r_rb.timestamp) = %s
+                )
+                THEN r.empleado_id END) as en_break,
+
+            COUNT(DISTINCT CASE
+                WHEN r.tipo = 'salida_almuerzo'
+                AND DATE(r.timestamp) = %s
+                AND NOT EXISTS (
+                    SELECT 1 FROM registros r_ra
+                    WHERE r_ra.empleado_id = r.empleado_id
+                    AND r_ra.tipo = 'regreso_almuerzo'
+                    AND DATE(r_ra.timestamp) = %s
+                )
+                THEN r.empleado_id END) as en_almuerzo,
+
+            COUNT(DISTINCT CASE
+                WHEN n.tipo IN ('incapacidad','permiso','vacaciones')
                 AND n.fecha_inicio <= %s
                 AND (n.fecha_fin >= %s OR n.fecha_fin IS NULL)
                 THEN e.id END) as con_novedad
+
         FROM conjuntos c
         LEFT JOIN empleados e ON e.conjunto_id = c.id AND e.activo = 1 AND e.tipo = 'fijo'
         LEFT JOIN registros r ON r.empleado_id = e.id
@@ -100,9 +126,9 @@ def dashboard():
         WHERE c.activo = 1
         GROUP BY c.id, c.nombre
         ORDER BY c.nombre
-    """, (hoy, hoy, hoy, hoy, hoy, hoy, hoy))
+    """, (hoy, hoy, hoy, hoy, hoy, hoy, hoy, hoy))
     tarjetas = cur.fetchall()
- 
+
     cur.execute("""
         SELECT
             e.id, e.nombre, e.documento,
@@ -125,7 +151,7 @@ def dashboard():
         ORDER BY e.nombre
     """, (hoy, hoy))
     supernumerarios_raw = cur.fetchall()
- 
+
     supernumerarios = []
     for s in supernumerarios_raw:
         if s['salida']:
@@ -138,7 +164,7 @@ def dashboard():
             estado = 'Presente'
         else:
             estado = 'Sin registro'
- 
+
         supernumerarios.append({
             'nombre':       s['nombre'],
             'documento':    s['documento'] or '—',
@@ -146,9 +172,10 @@ def dashboard():
             'estado':       estado,
             'conjunto_hoy': s['conjunto_hoy'] or '—',
         })
- 
+
     cur.execute("""
-        SELECT n.id, e.nombre, n.tipo, n.fecha_inicio, n.fecha_fin, n.descripcion
+        SELECT n.id, e.nombre, n.tipo, n.fecha_inicio, n.fecha_fin, n.descripcion,
+               n.hora_entrada_permiso, n.hora_salida_permiso
         FROM novedades n
         JOIN empleados e ON e.id = n.empleado_id
         WHERE n.fecha_fin >= %s OR n.fecha_fin IS NULL
@@ -156,7 +183,7 @@ def dashboard():
         LIMIT 10
     """, (hoy,))
     novedades = cur.fetchall()
- 
+
     cur.execute("""
         SELECT e.nombre, r.tipo, r.timestamp
         FROM registros r
@@ -166,15 +193,15 @@ def dashboard():
         LIMIT 10
     """, (hoy,))
     actividad = cur.fetchall()
- 
+
     cur.execute("SELECT id, nombre, documento FROM empleados WHERE activo = 1 ORDER BY nombre")
     empleados = cur.fetchall()
- 
+
     cur.execute("SELECT id, nombre FROM conjuntos WHERE activo = 1 ORDER BY nombre")
     conjuntos = cur.fetchall()
- 
+
     cur.close()
- 
+
     return render_template('admin/dashboard.html',
         presentes=presentes,
         en_break=en_break,
@@ -190,12 +217,8 @@ def dashboard():
         admin_nombre=session.get('admin_nombre'),
         fecha_hoy=datetime.today().strftime('%d/%m/%Y')
     )
- 
- 
-# ══════════════════════════════════════════════════════
-# DETALLE STAT CARDS
-# ══════════════════════════════════════════════════════
- 
+
+
 @admin.route('/admin/stats/presentes')
 @login_required
 def stats_presentes():
@@ -208,8 +231,12 @@ def stats_presentes():
         JOIN empleados e ON e.id = r.empleado_id
         LEFT JOIN conjuntos c ON c.id = e.conjunto_id
         WHERE DATE(r.timestamp) = %s AND r.tipo = 'entrada'
+        AND r.empleado_id NOT IN (
+            SELECT empleado_id FROM registros
+            WHERE DATE(timestamp) = %s AND tipo = 'salida'
+        )
         ORDER BY r.timestamp DESC
-    """, (hoy,))
+    """, (hoy, hoy))
     rows = cur.fetchall()
     cur.close()
     return jsonify([{
@@ -218,8 +245,8 @@ def stats_presentes():
         'conjunto':     r['conjunto'] or '—',
         'hora_entrada': str(r['hora_entrada'])[:5] if r['hora_entrada'] else '—',
     } for r in rows])
- 
- 
+
+
 @admin.route('/admin/stats/break')
 @login_required
 def stats_break():
@@ -246,8 +273,8 @@ def stats_break():
         'conjunto':    r['conjunto'] or '—',
         'hora_salida': str(r['hora_salida'])[:5] if r['hora_salida'] else '—',
     } for r in rows])
- 
- 
+
+
 @admin.route('/admin/stats/almuerzo')
 @login_required
 def stats_almuerzo():
@@ -281,8 +308,8 @@ def stats_almuerzo():
             'minutos':     minutos,
         })
     return jsonify(resultado)
- 
- 
+
+
 @admin.route('/admin/stats/permisos')
 @login_required
 def stats_permisos():
@@ -290,7 +317,8 @@ def stats_permisos():
     hoy = date.today()
     cur.execute("""
         SELECT e.nombre, e.documento, c.nombre as conjunto,
-               n.fecha_inicio, n.fecha_fin, n.descripcion
+               n.fecha_inicio, n.fecha_fin, n.descripcion,
+               n.hora_entrada_permiso, n.hora_salida_permiso
         FROM novedades n
         JOIN empleados e ON e.id = n.empleado_id
         LEFT JOIN conjuntos c ON c.id = e.conjunto_id
@@ -302,15 +330,17 @@ def stats_permisos():
     rows = cur.fetchall()
     cur.close()
     return jsonify([{
-        'nombre':      r['nombre'],
-        'documento':   r['documento'] or '—',
-        'conjunto':    r['conjunto'] or '—',
-        'fecha_inicio': r['fecha_inicio'].strftime('%d/%m/%Y') if r['fecha_inicio'] else '—',
-        'fecha_fin':    r['fecha_fin'].strftime('%d/%m/%Y') if r['fecha_fin'] else 'Indefinido',
-        'descripcion':  r['descripcion'] or '—',
+        'nombre':               r['nombre'],
+        'documento':            r['documento'] or '—',
+        'conjunto':             r['conjunto'] or '—',
+        'fecha_inicio':         r['fecha_inicio'].strftime('%d/%m/%Y') if r['fecha_inicio'] else '—',
+        'fecha_fin':            r['fecha_fin'].strftime('%d/%m/%Y') if r['fecha_fin'] else 'Indefinido',
+        'descripcion':          r['descripcion'] or '—',
+        'hora_entrada_permiso': str(r['hora_entrada_permiso'])[:5] if r['hora_entrada_permiso'] else None,
+        'hora_salida_permiso':  str(r['hora_salida_permiso'])[:5]  if r['hora_salida_permiso']  else None,
     } for r in rows])
- 
- 
+
+
 @admin.route('/admin/stats/incapacidades')
 @login_required
 def stats_incapacidades():
@@ -330,24 +360,21 @@ def stats_incapacidades():
     rows = cur.fetchall()
     cur.close()
     return jsonify([{
-        'nombre':      r['nombre'],
-        'documento':   r['documento'] or '—',
-        'conjunto':    r['conjunto'] or '—',
+        'nombre':       r['nombre'],
+        'documento':    r['documento'] or '—',
+        'conjunto':     r['conjunto'] or '—',
         'fecha_inicio': r['fecha_inicio'].strftime('%d/%m/%Y') if r['fecha_inicio'] else '—',
         'fecha_fin':    r['fecha_fin'].strftime('%d/%m/%Y') if r['fecha_fin'] else 'Indefinido',
         'descripcion':  r['descripcion'] or '—',
     } for r in rows])
- 
- 
-# ══════════════════════════════════════════════════════
-# DETALLE CONJUNTO
-# ══════════════════════════════════════════════════════
+
+
 @admin.route('/admin/conjunto/<int:conjunto_id>')
 @login_required
 def detalle_conjunto(conjunto_id):
     cur = mysql.connection.cursor()
     hoy = date.today()
- 
+
     cur.execute("""
         SELECT
             e.nombre, e.documento,
@@ -373,7 +400,7 @@ def detalle_conjunto(conjunto_id):
         ORDER BY e.nombre
     """, (hoy, hoy, hoy, hoy, conjunto_id))
     empleados_raw = cur.fetchall()
- 
+
     empleados = []
     for e in empleados_raw:
         if e['novedad_tipo'] in ('incapacidad', 'permiso', 'vacaciones'):
@@ -388,7 +415,7 @@ def detalle_conjunto(conjunto_id):
             estado = 'Presente'
         else:
             estado = 'Sin registro'
- 
+
         empleados.append({
             'nombre':    e['nombre'],
             'documento': e['documento'] or '—',
@@ -396,21 +423,18 @@ def detalle_conjunto(conjunto_id):
             'estado':    estado,
             'foto': base64.b64encode(e['foto']).decode('utf-8') if e['foto'] else None,
         })
- 
+
     cur.close()
     return jsonify(empleados)
- 
- 
-# ══════════════════════════════════════════════════════
-# NOVEDADES
-# ══════════════════════════════════════════════════════
+
+
 @admin.route('/admin/novedades', methods=['POST'])
 @login_required
 def crear_novedad():
     tipo        = request.form.get('tipo')
     empleado_id = request.form.get('empleado_id')
     cur = mysql.connection.cursor()
- 
+
     if tipo == 'retiro':
         fecha_inicio = request.form.get('fecha_retiro')
         descripcion  = request.form.get('descripcion_r', '')
@@ -419,7 +443,7 @@ def crear_novedad():
             VALUES (%s, %s, %s, %s)
         """, (empleado_id, tipo, fecha_inicio, descripcion))
         cur.execute("UPDATE empleados SET activo = 0 WHERE id = %s", (empleado_id,))
- 
+
     elif tipo == 'cambio_horario':
         fecha_inicio = request.form.get('fecha_inicio_h')
         fecha_fin    = request.form.get('fecha_fin_h') or None
@@ -427,38 +451,59 @@ def crear_novedad():
         hora_entrada = request.form.get('hora_entrada')
         hora_salida  = request.form.get('hora_salida')
         conjunto_id  = request.form.get('conjunto_id') or None
- 
+
         cur.execute("""
             INSERT INTO novedades (empleado_id, tipo, fecha_inicio, fecha_fin, descripcion)
             VALUES (%s, %s, %s, %s, %s)
         """, (empleado_id, tipo, fecha_inicio, fecha_fin, descripcion))
- 
+
         if hora_entrada and hora_salida:
             cur.execute("""
                 INSERT INTO horarios (empleado_id, hora_entrada, hora_salida, vigente_desde)
                 VALUES (%s, %s, %s, %s)
             """, (empleado_id, hora_entrada, hora_salida, fecha_inicio))
- 
+
         if conjunto_id:
             cur.execute("UPDATE empleados SET conjunto_id = %s WHERE id = %s", (conjunto_id, empleado_id))
- 
-    else:
-        fecha_inicio = request.form.get('fecha_inicio')
-        fecha_fin    = request.form.get('fecha_fin') or None
-        descripcion  = request.form.get('descripcion', '')
+
+    elif tipo == 'compensatorio':
+        fecha_inicio = request.form.get('fecha_inicio_comp')
+        fecha_fin    = request.form.get('fecha_fin_comp') or None
+        descripcion  = request.form.get('descripcion_comp', '')
         cur.execute("""
             INSERT INTO novedades (empleado_id, tipo, fecha_inicio, fecha_fin, descripcion)
             VALUES (%s, %s, %s, %s, %s)
         """, (empleado_id, tipo, fecha_inicio, fecha_fin, descripcion))
- 
+
+    else:
+        # permiso, incapacidad, vacaciones
+        fecha_inicio = request.form.get('fecha_inicio')
+        fecha_fin    = request.form.get('fecha_fin') or None
+        descripcion  = request.form.get('descripcion', '')
+
+        hora_entrada_permiso = None
+        hora_salida_permiso  = None
+
+        if tipo == 'permiso':
+            subtipo = request.form.get('subtipo_permiso', 'dia_completo')
+            if subtipo == 'entrada_tarde':
+                hora_entrada_permiso = request.form.get('hora_entrada_permiso') or None
+            elif subtipo == 'salida_temprana':
+                hora_salida_permiso = request.form.get('hora_salida_permiso') or None
+
+        cur.execute("""
+            INSERT INTO novedades
+                (empleado_id, tipo, fecha_inicio, fecha_fin, descripcion,
+                 hora_entrada_permiso, hora_salida_permiso)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (empleado_id, tipo, fecha_inicio, fecha_fin, descripcion,
+              hora_entrada_permiso, hora_salida_permiso))
+
     mysql.connection.commit()
     cur.close()
     return redirect(url_for('admin.dashboard'))
- 
- 
-# ══════════════════════════════════════════════════════
-# CREAR EMPLEADO
-# ══════════════════════════════════════════════════════
+
+
 @admin.route('/admin/empleados', methods=['POST'])
 @login_required
 def crear_empleado():
@@ -470,63 +515,60 @@ def crear_empleado():
     conjunto_id  = request.form.get('conjunto_id') or None
     hora_entrada = request.form.get('hora_entrada')
     hora_salida  = request.form.get('hora_salida')
- 
+
     if not nombre:
         flash('El nombre es obligatorio')
         return redirect(url_for('admin.dashboard'))
- 
+
     cur = mysql.connection.cursor()
- 
+
     if documento:
         cur.execute("SELECT id FROM empleados WHERE documento = %s", (documento,))
         if cur.fetchone():
             cur.close()
             flash('Ya existe un empleado con ese documento')
             return redirect(url_for('admin.dashboard'))
- 
+
     cur.execute("""
         INSERT INTO empleados (nombre, documento, cargo, telefono, tipo, conjunto_id, activo)
         VALUES (%s, %s, %s, %s, %s, %s, 1)
     """, (nombre, documento, cargo, telefono, tipo, conjunto_id))
- 
+
     empleado_id = cur.lastrowid
- 
+
     if hora_entrada and hora_salida:
         cur.execute("""
             INSERT INTO horarios (empleado_id, hora_entrada, hora_salida, vigente_desde)
             VALUES (%s, %s, %s, %s)
         """, (empleado_id, hora_entrada, hora_salida, date.today()))
- 
+
     mysql.connection.commit()
     cur.close()
     return redirect(url_for('admin.dashboard'))
- 
- 
-# ══════════════════════════════════════════════════════
-# CREAR CONJUNTO
-# ══════════════════════════════════════════════════════
+
+
 @admin.route('/admin/conjuntos', methods=['POST'])
 @login_required
 def crear_conjunto():
     nombre    = request.form.get('nombre', '').strip()
     direccion = request.form.get('direccion', '').strip()
- 
+
     if not nombre:
         flash('El nombre del conjunto es obligatorio')
         return redirect(url_for('admin.dashboard'))
- 
+
     cur = mysql.connection.cursor()
     cur.execute("SELECT id FROM conjuntos WHERE nombre = %s", (nombre,))
     if cur.fetchone():
         cur.close()
         flash('Ya existe un conjunto con ese nombre')
         return redirect(url_for('admin.dashboard'))
- 
+
     cur.execute("""
         INSERT INTO conjuntos (nombre, direccion, activo)
         VALUES (%s, %s, 1)
     """, (nombre, direccion))
- 
+
     mysql.connection.commit()
     cur.close()
     return redirect(url_for('admin.dashboard'))

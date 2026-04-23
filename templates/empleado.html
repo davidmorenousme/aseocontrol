@@ -12,7 +12,7 @@
 <nav>
   <div class="brand">
     <div class="brand-icon">
-  <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:44px; height:44px; border-radius:9px; object-fit:contain; display:block;">
+      <img src="{{ url_for('static', filename='img/Logo.jpg') }}" style="width:44px; height:44px; border-radius:9px; object-fit:contain; display:block;">
     </div>
     <div class="brand-name">
       Casa Full
@@ -23,6 +23,64 @@
     <div class="clock-pill" id="clock">00:00:00</div>
   </div>
 </nav>
+
+<!-- ══════ MODAL: Política de privacidad de fotos ══════ -->
+<div id="modal-politica" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  z-index:500; align-items:center; justify-content:center; padding:1rem;">
+  <div style="background:#fff; border-radius:16px; max-width:420px; width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden;">
+
+    <!-- Header verde -->
+    <div style="background:#7ab32e; padding:20px 24px;">
+      <div style="font-size:1.4rem; margin-bottom:6px">📸 Uso de fotografía</div>
+      <div style="color:rgba(255,255,255,0.9); font-size:0.85rem; font-weight:400;">
+        Casa Full JM S.A.S — Política de tratamiento de datos
+      </div>
+    </div>
+
+    <!-- Cuerpo -->
+    <div style="padding:20px 24px;">
+      <p style="font-size:0.88rem; color:#374151; line-height:1.6; margin:0 0 12px">
+        Al tomar esta foto, usted autoriza a <strong>Casa Full JM S.A.S</strong> a
+        registrarla como evidencia de su asistencia laboral, bajo las siguientes condiciones:
+      </p>
+      <ul style="font-size:0.85rem; color:#374151; line-height:1.8; margin:0 0 16px; padding-left:1.2rem;">
+        <li>La foto se usa <strong>únicamente</strong> para verificar el registro de entrada.</li>
+        <li>Se almacena de forma segura y <strong>no se comparte</strong> con terceros.</li>
+        <li>Se <strong>elimina automáticamente</strong> al día siguiente del registro.</li>
+        <li>Tiene derecho a consultar o solicitar la eliminación de sus datos.</li>
+      </ul>
+      <p style="font-size:0.8rem; color:#6b7280; margin:0 0 20px;">
+        De conformidad con la Ley 1581 de 2012 (Habeas Data — Colombia).
+      </p>
+
+      <!-- Checkbox -->
+      <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;
+        padding:12px; background:#f0fdf4; border-radius:10px; border:1.5px solid #bbf7d0;
+        margin-bottom:16px;">
+        <input type="checkbox" id="chk-acepto" style="width:18px; height:18px; margin-top:1px;
+          accent-color:#7ab32e; cursor:pointer; flex-shrink:0;">
+        <span style="font-size:0.85rem; color:#166534; font-weight:500; line-height:1.4;">
+          He leído y acepto el uso de mi fotografía según las condiciones descritas.
+        </span>
+      </label>
+
+      <div style="display:flex; gap:10px;">
+        <button onclick="rechazarPolitica()"
+          style="flex:1; padding:11px; border:1.5px solid #e5e7eb; background:#fff;
+          border-radius:10px; font-size:0.85rem; color:#6b7280; cursor:pointer; font-weight:600;">
+          Cancelar
+        </button>
+        <button id="btn-aceptar-politica" onclick="aceptarPolitica()" disabled
+          style="flex:2; padding:11px; background:#7ab32e; color:#fff; border:none;
+          border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer;
+          opacity:0.45; transition:opacity 0.2s;">
+          ✅ Continuar con la foto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- KIOSCO -->
 <div class="view active" id="view-employee">
@@ -78,7 +136,7 @@
 
           <div id="alertBox"></div>
 
-          <!-- Selector de conjunto para supernumerarios (solo en entrada) -->
+          <!-- Selector de conjunto para supernumerarios -->
           <div id="selector-conjunto" style="display:none">
             <div class="input-group">
               <label>¿En qué conjunto estás hoy?</label>
@@ -99,7 +157,7 @@
             <img id="preview" style="display:none; width:100%; border-radius:12px; border:2px solid var(--green); max-height:220px; object-fit:cover;">
 
             <div style="display:flex; gap:8px; margin-top:0.8rem; justify-content:center">
-              <button class="btn-main" id="btn-camara" onclick="activarCamara()" style="width:auto; padding:10px 20px">
+              <button class="btn-main" id="btn-camara" onclick="solicitarCamara()" style="width:auto; padding:10px 20px">
                 📷 Activar cámara
               </button>
               <button class="btn-main" id="btn-foto" onclick="tomarFoto()" style="display:none; width:auto; padding:10px 20px; background:var(--green-mid)">
@@ -123,7 +181,6 @@
 
         <!-- PASO 2C: acciones (ya tiene entrada hoy) -->
         <div id="state-actions" style="display:none">
-
           <div class="employee-info">
             <div class="emp-avatar" id="empInitials2"></div>
             <div>
@@ -178,6 +235,32 @@
   let streamActual   = null;
   let fotoCapturada  = null;
 
+  // ── Checkbox habilita botón de aceptar ──
+  document.getElementById('chk-acepto').addEventListener('change', function() {
+    const btn = document.getElementById('btn-aceptar-politica');
+    btn.disabled = !this.checked;
+    btn.style.opacity = this.checked ? '1' : '0.45';
+    btn.style.cursor  = this.checked ? 'pointer' : 'default';
+  });
+
+  // ── Mostrar modal de política antes de abrir la cámara ──
+  function solicitarCamara() {
+    document.getElementById('chk-acepto').checked = false;
+    const btn = document.getElementById('btn-aceptar-politica');
+    btn.disabled = true;
+    btn.style.opacity = '0.45';
+    document.getElementById('modal-politica').style.display = 'flex';
+  }
+
+  function aceptarPolitica() {
+    document.getElementById('modal-politica').style.display = 'none';
+    activarCamara();
+  }
+
+  function rechazarPolitica() {
+    document.getElementById('modal-politica').style.display = 'none';
+  }
+
   async function lookupEmployee() {
     const doc = document.getElementById('docInput').value.trim();
     if (!doc) return;
@@ -190,6 +273,12 @@
       });
 
       const data = await res.json();
+
+      if (data.error === 'dia_no_laboral') {
+        inputError();
+        showToast('📅 Hoy no es tu día de trabajo');
+        return;
+      }
 
       if (!res.ok) {
         inputError();
@@ -245,7 +334,6 @@
         alertBox.innerHTML = '';
       }
 
-      // Solo en primera entrada mostrar selector de conjunto para supernumerarios
       if (data.es_supernumerario && data.conjuntos && data.conjuntos.length) {
         const sel = document.getElementById('conjunto-select');
         sel.innerHTML = '<option value="">Seleccionar conjunto...</option>';
@@ -298,7 +386,8 @@
     document.getElementById('preview').style.display               = 'none';
     document.getElementById('btn-repetir').style.display           = 'none';
     document.getElementById('btn-confirmar-entrada').style.display = 'none';
-    activarCamara();
+    // Volver a mostrar modal de política antes de repetir
+    solicitarCamara();
   }
 
   async function confirmarEntrada() {
