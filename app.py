@@ -1,4 +1,4 @@
-import config
+import config as config_module
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_mysqldb import MySQL
@@ -23,7 +23,7 @@ import atexit
 
 app = Flask(__name__)
 
-app.config.from_object(config)
+app.config.from_object(config_module)
 
 mysql = MySQL(app)
 
@@ -31,7 +31,7 @@ auth_init(mysql)
 admin_init(mysql)
 reportes_init(mysql)
 notif_init(mysql)
-notif_mail(config)
+notif_mail(config_module)
 
 app.register_blueprint(reportes)
 app.register_blueprint(auth)
