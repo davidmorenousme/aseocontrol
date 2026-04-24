@@ -17,12 +17,12 @@ def init_mysql(mysql_instance):
 def init_mail(config):
     global mail_config
     mail_config = {
-        'server':       config.MAIL_SERVER,
-        'port':         config.MAIL_PORT,
-        'use_tls':      config.MAIL_USE_TLS,
-        'username':     config.MAIL_USERNAME,
-        'password':     config.MAIL_PASSWORD,
-        'destinatario': config.MAIL_DESTINATARIO,
+        'server':       config.get('MAIL_SERVER'),
+        'port':         config.get('MAIL_PORT'),
+        'use_tls':      config.get('MAIL_USE_TLS'),
+        'username':     config.get('MAIL_USERNAME'),
+        'password':     config.get('MAIL_PASSWORD'),
+        'destinatario': config.get('MAIL_DESTINATARIO'),
     }
 
 def login_required(f):
