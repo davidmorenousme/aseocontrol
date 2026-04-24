@@ -31,7 +31,7 @@ auth_init(mysql)
 admin_init(mysql)
 reportes_init(mysql)
 notif_init(mysql)
-notif_mail(config)
+notif_mail(app.config)
 
 app.register_blueprint(reportes)
 app.register_blueprint(auth)
