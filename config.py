@@ -9,8 +9,8 @@ MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '')
 MYSQL_DB       = os.getenv('MYSQL_DB', 'aseocontrol_db')
 MYSQL_CURSORCLASS = 'DictCursor'
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'aseocontrol-2026')
-DEBUG = True
+SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
+DEBUG      = os.getenv('FLASK_ENV', 'development') != 'production'
 
 MAIL_SERVER   = 'smtp.gmail.com'
 MAIL_PORT     = 587

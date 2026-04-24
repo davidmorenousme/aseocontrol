@@ -1,7 +1,9 @@
+import config
+from config import Config
 from flask import Flask, render_template, request, jsonify, session
 from flask_mysqldb import MySQL
 from datetime import date
-import config
+
 
 from routes.auth import auth, init_mysql as auth_init
 from routes.admin import admin, init_mysql as admin_init
@@ -21,6 +23,7 @@ import atexit
 
 app = Flask(__name__)
 app.config.from_object(config)
+app.config.from_object(Config)
 
 mysql = MySQL(app)
 
@@ -34,6 +37,10 @@ app.register_blueprint(reportes)
 app.register_blueprint(auth)
 app.register_blueprint(admin)
 app.register_blueprint(notificaciones_bp)
+
+
+
+
 
 
 @app.route('/')
