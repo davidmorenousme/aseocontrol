@@ -24,7 +24,7 @@ import atexit
 app = Flask(__name__)
 
 app.config.from_object(config)
-
+app.config['MYSQL_PORT'] = config.MYSQL_PORT
 mysql = MySQL(app)
 
 auth_init(mysql)
