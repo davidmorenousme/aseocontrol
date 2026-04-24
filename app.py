@@ -1,5 +1,4 @@
 import config
-from config import Config
 from flask import Flask, render_template, request, jsonify, session
 from flask_mysqldb import MySQL
 from datetime import date
@@ -23,7 +22,7 @@ import atexit
 
 app = Flask(__name__)
 app.config.from_object(config)
-app.config.from_object(Config)
+
 
 mysql = MySQL(app)
 
