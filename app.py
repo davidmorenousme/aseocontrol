@@ -22,7 +22,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 
 app = Flask(__name__)
-app.config.from_object(config)
+
 app.config.from_object(Config)
 
 mysql = MySQL(app)
@@ -31,7 +31,7 @@ auth_init(mysql)
 admin_init(mysql)
 reportes_init(mysql)
 notif_init(mysql)
-notif_mail(config)
+notif_mail(Config)
 
 app.register_blueprint(reportes)
 app.register_blueprint(auth)
