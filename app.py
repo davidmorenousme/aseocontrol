@@ -1,5 +1,5 @@
 import config
-from config import Config
+
 from flask import Flask, render_template, request, jsonify, session
 from flask_mysqldb import MySQL
 from datetime import date
@@ -23,7 +23,7 @@ import atexit
 
 app = Flask(__name__)
 
-app.config.from_object(Config)
+app.config.from_object(config)
 
 mysql = MySQL(app)
 
@@ -31,7 +31,7 @@ auth_init(mysql)
 admin_init(mysql)
 reportes_init(mysql)
 notif_init(mysql)
-notif_mail(Config)
+notif_mail(config)
 
 app.register_blueprint(reportes)
 app.register_blueprint(auth)
