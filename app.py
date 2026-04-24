@@ -316,9 +316,9 @@ def job_break():
 
 
 scheduler = BackgroundScheduler(daemon=True)
-scheduler.add_job(job_ausencias, 'interval', minutes=1, id='job_ausencias')
-scheduler.add_job(job_almuerzo,  'interval', minutes=1, id='job_almuerzo')
-scheduler.add_job(job_break,     'interval', minutes=1, id='job_break')
+scheduler.add_job(job_ausencias, 'interval', minutes=6, id='job_ausencias')
+scheduler.add_job(job_almuerzo,  'interval', minutes=6, id='job_almuerzo')
+scheduler.add_job(job_break,     'interval', minutes=6, id='job_break')
 scheduler.start()
 atexit.register(lambda: scheduler.shutdown(wait=False))
 
