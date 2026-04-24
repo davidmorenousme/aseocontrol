@@ -17,14 +17,17 @@ def init_mysql(mysql_instance):
 def init_mail(config):
     global mail_config
     mail_config = {
-        'server':       config.get('MAIL_SERVER'),
-        'port':         config.get('MAIL_PORT'),
-        'use_tls':      config.get('MAIL_USE_TLS'),
-        'username':     config.get('MAIL_USERNAME'),
-        'password':     config.get('MAIL_PASSWORD'),
-        'destinatario': config.get('MAIL_DESTINATARIO'),
+        'server':       getattr(config, 'MAIL_SERVER', None),
+        'port':         getattr(config, 'MAIL_PORT', 587),
+        'use_tls':      getattr(config, 'MAIL_USE_TLS', True),
+        'username':     getattr(config, 'MAIL_USERNAME', None),
+        'password':     getattr(config, 'MAIL_PASSWORD', None),
+        'destinatario': getattr(config, 'MAIL_DESTINATARIO', None),
     }
-
+    
+    # Opcional: verificar configuración
+    if not mail_config['username'] or not mail_config['password']:
+        print("⚠️ ADVERTENCIA: Credenciales de correo no configuradas")
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
