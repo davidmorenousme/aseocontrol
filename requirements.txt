@@ -9,3 +9,4 @@ pyOpenSSL==24.3.0
 gunicorn
 flask-sqlalchemy
 pymysql
+pytz
