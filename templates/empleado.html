@@ -280,6 +280,12 @@
         return;
       }
 
+      if (data.error === 'fuera_de_horario') {
+        inputError();
+        showToast('⏰ ' + data.nombre + ', estás fuera de tu horario laboral');
+        return;
+      }
+
       if (!res.ok) {
         inputError();
         showToast('⚠️ ' + (data.error || 'Documento no encontrado'));
