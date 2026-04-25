@@ -83,19 +83,17 @@ def consultar():
         entrada = str(horario['hora_entrada'])[:5]
         salida  = str(horario['hora_salida'])[:5]
         turno = f"{entrada} – {salida}"
-    
+        
         bogota = pytz.timezone('America/Bogota')
-        ahora = datetime.now(bogota).replace(tzinfo=None).time()
-    
-        entrada_seconds = int(horario['hora_entrada'].total_seconds())
-        salida_seconds  = int(horario['hora_salida'].total_seconds())
-    
-        entrada_time = (datetime.min + timedelta(seconds=entrada_seconds) - timedelta(minutes=15)).time()
-        salida_time  = (datetime.min + timedelta(seconds=salida_seconds)  + timedelta(minutes=30)).time()
-    
-        if not (entrada_time <= ahora <= salida_time):
-            cur.close()
-            return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
+        ahora_dt = datetime.now(bogota)
+        ahora_seconds = ahora_dt.hour * 3600 + ahora_dt.minute * 60 + ahora_dt.second
+        
+        entrada_seconds = int(horario['hora_entrada'].total_seconds()) - (15 * 60)
+        salida_seconds  = int(horario['hora_salida'].total_seconds())  + (30 * 60)
+        
+        if not (entrada_seconds <= ahora_seconds <= salida_seconds):
+        cur.close()
+        return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
         
     # ── Validar si trabaja hoy según semana laboral ──
     if not empleado_trabaja_hoy(cur, emp['id']):
