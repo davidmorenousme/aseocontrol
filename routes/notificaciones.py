@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, session, redirect, url_for, request
 from datetime import datetime, date, timedelta
 from functools import wraps
 import smtplib
+import pytz
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from routes.utils import empleado_trabaja_hoy
@@ -109,7 +110,8 @@ def verificar_ausencias():
     try:
         cur = mysql.connection.cursor()
         hoy   = date.today()
-        ahora = datetime.now()
+        bogota = pytz.timezone('America/Bogota')
+        ahora  = datetime.now(bogota).replace(tzinfo=None)
 
         # ── Query 1: Empleados sin entrada, sin ninguna novedad que los excuse ──
         # Excluye: incapacidad, vacaciones, permiso día completo (hora_entrada_permiso IS NULL)
@@ -269,7 +271,8 @@ def verificar_almuerzo():
     try:
         cur = mysql.connection.cursor()
         hoy   = date.today()
-        ahora = datetime.now()
+        bogota = pytz.timezone('America/Bogota')
+        ahora  = datetime.now(bogota).replace(tzinfo=None)
 
         cur.execute("""
             SELECT e.id, e.nombre, e.documento,
@@ -352,7 +355,8 @@ def verificar_break():
     try:
         cur = mysql.connection.cursor()
         hoy   = date.today()
-        ahora = datetime.now()
+        bogota = pytz.timezone('America/Bogota')
+        ahora  = datetime.now(bogota).replace(tzinfo=None)
 
         cur.execute("""
             SELECT e.id, e.nombre, e.documento,
