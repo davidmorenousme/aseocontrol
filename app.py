@@ -92,8 +92,8 @@ def consultar():
         salida_seconds  = int(horario['hora_salida'].total_seconds())  + (30 * 60)
         
         if not (entrada_seconds <= ahora_seconds <= salida_seconds):
-        cur.close()
-        return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
+            cur.close()
+            return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
         
     # ── Validar si trabaja hoy según semana laboral ──
     if not empleado_trabaja_hoy(cur, emp['id']):
