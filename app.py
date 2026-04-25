@@ -1,4 +1,5 @@
 import config
+import pytz
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_mysqldb import MySQL
@@ -89,6 +90,19 @@ def consultar():
         cur.close()
         return jsonify({'error': 'dia_no_laboral', 'nombre': emp['nombre']}), 200
 
+    if horario:
+        from datetime import datetime
+        bogota = pytz.timezone('America/Bogota')
+        ahora = datetime.now(bogota).time()
+        
+        from datetime import timedelta
+        entrada_dt = (datetime.combine(date.today(), horario['hora_entrada']) - timedelta(minutes=15)).time()
+        salida_dt  = (datetime.combine(date.today(), horario['hora_salida'])  + timedelta(minutes=30)).time()
+
+    if not (entrada_dt <= ahora <= salida_dt):
+        cur.close()
+        return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
+    
     cur.execute("""
         SELECT tipo, descripcion, fecha_fin
         FROM novedades
