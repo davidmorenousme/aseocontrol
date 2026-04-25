@@ -83,9 +83,9 @@ def consultar():
         entrada = str(horario['hora_entrada'])[:5]
         salida  = str(horario['hora_salida'])[:5]
         turno = f"{entrada} – {salida}"
-
+    
         bogota = pytz.timezone('America/Bogota')
-        ahora = datetime.now(bogota).time()
+        ahora = datetime.now(bogota).replace(tzinfo=None).time()
     
         entrada_seconds = int(horario['hora_entrada'].total_seconds())
         salida_seconds  = int(horario['hora_salida'].total_seconds())
