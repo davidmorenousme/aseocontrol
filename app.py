@@ -91,17 +91,20 @@ def consultar():
         return jsonify({'error': 'dia_no_laboral', 'nombre': emp['nombre']}), 200
 
     if horario:
-        from datetime import datetime
+        from datetime import datetime, timedelta
+        
         bogota = pytz.timezone('America/Bogota')
         ahora = datetime.now(bogota).time()
         
-        from datetime import timedelta
-        entrada_dt = (datetime.combine(date.today(), horario['hora_entrada']) - timedelta(minutes=15)).time()
-        salida_dt  = (datetime.combine(date.today(), horario['hora_salida'])  + timedelta(minutes=30)).time()
+        entrada_seconds = int(horario['hora_entrada'].total_seconds())
+        salida_seconds  = int(horario['hora_salida'].total_seconds())
 
-    if not (entrada_dt <= ahora <= salida_dt):
-        cur.close()
-        return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
+        entrada_time = (datetime.min + timedelta(seconds=entrada_seconds) - timedelta(minutes=15)).time()
+        salida_time  = (datetime.min + timedelta(seconds=salida_seconds)  + timedelta(minutes=30)).time()
+
+        if not (entrada_time <= ahora <= salida_time):
+            cur.close()
+            return jsonify({'error': 'fuera_de_horario', 'nombre': emp['nombre']}), 200
     
     cur.execute("""
         SELECT tipo, descripcion, fecha_fin
