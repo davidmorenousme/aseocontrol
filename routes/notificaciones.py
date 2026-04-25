@@ -25,10 +25,9 @@ def init_mail(config):
         'password':     getattr(config, 'MAIL_PASSWORD', None),
         'destinatario': getattr(config, 'MAIL_DESTINATARIO', None),
     }
-    
-    # Opcional: verificar configuración
     if not mail_config['username'] or not mail_config['password']:
         print("⚠️ ADVERTENCIA: Credenciales de correo no configuradas")
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -95,27 +94,22 @@ def _plantilla_correo(titulo, subtitulo, encabezados, filas_html):
 
 
 def _timedelta_a_segundos(td):
-    """Convierte un campo TIME de MySQL (timedelta) a segundos totales."""
     if hasattr(td, 'seconds'):
         return td.seconds
     return int(td.total_seconds())
 
 
 # ══════════════════════════════════════════════════════════════
-# VERIFICAR AUSENCIAS — +15 min de hora de entrada
-# Maneja: empleados normales Y empleados con permiso de entrada tarde
+# VERIFICAR AUSENCIAS — +5 min después de hora de entrada
 # ══════════════════════════════════════════════════════════════
 def verificar_ausencias():
     cur = None
     try:
         cur = mysql.connection.cursor()
-        hoy   = date.today()
+        hoy    = date.today()
         bogota = pytz.timezone('America/Bogota')
         ahora  = datetime.now(bogota).replace(tzinfo=None)
 
-        # ── Query 1: Empleados sin entrada, sin ninguna novedad que los excuse ──
-        # Excluye: incapacidad, vacaciones, permiso día completo (hora_entrada_permiso IS NULL)
-        # y permiso entrada tarde (hora_entrada_permiso IS NOT NULL) — esos van en Query 2
         cur.execute("""
             SELECT e.id, e.nombre, e.documento, h.hora_entrada,
                    c.nombre as conjunto
@@ -142,8 +136,6 @@ def verificar_ausencias():
         """, (hoy, hoy, hoy, hoy, hoy))
         empleados_normales = cur.fetchall()
 
-        # ── Query 2: Empleados con permiso de ENTRADA TARDE sin entrada aún ──
-        # Usan hora_entrada_permiso como su hora de referencia en lugar del horario normal
         cur.execute("""
             SELECT e.id, e.nombre, e.documento,
                    c.nombre as conjunto,
@@ -165,54 +157,46 @@ def verificar_ausencias():
 
         ausentes = []
 
-        # ── Procesar empleados normales ──
         for emp in empleados_normales:
             if not emp['hora_entrada']:
                 continue
             if not empleado_trabaja_hoy(cur, emp['id']):
                 continue
 
-            segundos = _timedelta_a_segundos(emp['hora_entrada'])
-            hora_inicio_ventana = (
+            segundos    = _timedelta_a_segundos(emp['hora_entrada'])
+            hora_limite = (
                 datetime.combine(hoy, datetime.min.time())
                 + timedelta(seconds=segundos)
                 + timedelta(minutes=5)
             )
-            hora_fin_ventana = hora_inicio_ventana + timedelta(minutes=5)
 
-            if hora_inicio_ventana <= ahora <= hora_fin_ventana \
-                    and not ya_notificado_hoy(cur, 'ausencia', emp['nombre']):
+            if ahora >= hora_limite and not ya_notificado_hoy(cur, 'ausencia', emp['nombre']):
                 ausentes.append({
-                    'id':              emp['id'],
-                    'nombre':          emp['nombre'],
-                    'conjunto':        emp['conjunto'],
-                    'hora_ref':        emp['hora_entrada'],
-                    'hora_ref_fmt':    str(emp['hora_entrada'])[:5],
+                    'id':               emp['id'],
+                    'nombre':           emp['nombre'],
+                    'conjunto':         emp['conjunto'],
+                    'hora_ref_fmt':     str(emp['hora_entrada'])[:5],
                     'es_entrada_tarde': False,
                 })
 
-        # ── Procesar empleados con permiso de entrada tarde ──
         for emp in empleados_entrada_tarde:
             if not emp['hora_entrada_permiso']:
                 continue
             if not empleado_trabaja_hoy(cur, emp['id']):
                 continue
 
-            segundos = _timedelta_a_segundos(emp['hora_entrada_permiso'])
-            hora_inicio_ventana = (
+            segundos    = _timedelta_a_segundos(emp['hora_entrada_permiso'])
+            hora_limite = (
                 datetime.combine(hoy, datetime.min.time())
                 + timedelta(seconds=segundos)
                 + timedelta(minutes=5)
             )
-            hora_fin_ventana = hora_inicio_ventana + timedelta(minutes=5)
 
-            if hora_inicio_ventana <= ahora <= hora_fin_ventana \
-                    and not ya_notificado_hoy(cur, 'ausencia', emp['nombre']):
+            if ahora >= hora_limite and not ya_notificado_hoy(cur, 'ausencia', emp['nombre']):
                 ausentes.append({
                     'id':               emp['id'],
                     'nombre':           emp['nombre'],
                     'conjunto':         emp['conjunto'],
-                    'hora_ref':         emp['hora_entrada_permiso'],
                     'hora_ref_fmt':     str(emp['hora_entrada_permiso'])[:5],
                     'es_entrada_tarde': True,
                 })
@@ -226,7 +210,7 @@ def verificar_ausencias():
                         f"(permiso entrada tarde hasta {emp['hora_ref_fmt']})"
                     )
                 else:
-                    mensaje = f"⚠️ {emp['nombre']} ({conjunto}) no ha marcado entrada"
+                    mensaje = f"⚠️ {emp['nombre']} ({conjunto}) no ha marcado entrada (retraso +5 min)"
                 guardar_notificacion(cur, 'ausencia', mensaje)
 
             mysql.connection.commit()
@@ -239,7 +223,7 @@ def verificar_ausencias():
                 f"  {e['hora_ref_fmt']}"
                 f"  {'<span style=\"font-size:0.75rem;color:#7c3aed;margin-left:4px\">(permiso)</span>' if e['es_entrada_tarde'] else ''}"
                 f"</td>"
-                f"<td style='padding:8px;border-bottom:1px solid #eee;color:#d97706;font-weight:600'>+15 min</td>"
+                f"<td style='padding:8px;border-bottom:1px solid #eee;color:#d97706;font-weight:600'>+5 min</td>"
                 f"</tr>"
                 for e in ausentes
             ])
@@ -254,7 +238,7 @@ def verificar_ausencias():
                 )
             )
 
-        print(f"✅ verificar_ausencias OK — {len(ausentes)} ausente(s) en ventana")
+        print(f"✅ verificar_ausencias OK — {len(ausentes)} ausente(s)")
 
     except Exception as e:
         print(f"❌ Error en verificar_ausencias: {e}")
@@ -264,13 +248,13 @@ def verificar_ausencias():
 
 
 # ══════════════════════════════════════════════════════════════
-# VERIFICAR ALMUERZO — más de 65 min fuera (ventana 65–70 min)
+# VERIFICAR ALMUERZO — +65 min desde salida a almuerzo
 # ══════════════════════════════════════════════════════════════
 def verificar_almuerzo():
     cur = None
     try:
         cur = mysql.connection.cursor()
-        hoy   = date.today()
+        hoy    = date.today()
         bogota = pytz.timezone('America/Bogota')
         ahora  = datetime.now(bogota).replace(tzinfo=None)
 
@@ -296,13 +280,9 @@ def verificar_almuerzo():
             if not emp['hora_salida_almuerzo']:
                 continue
 
-            hora_inicio_ventana = emp['hora_salida_almuerzo'] + timedelta(minutes=65)
-            hora_fin_ventana    = emp['hora_salida_almuerzo'] + timedelta(minutes=70)
+            hora_limite = emp['hora_salida_almuerzo'] + timedelta(minutes=65)
 
-            if hora_inicio_ventana <= ahora <= hora_fin_ventana \
-                    and not ya_notificado_hoy(cur, 'almuerzo_extendido', emp['nombre']):
-                minutos_fuera = int((ahora - emp['hora_salida_almuerzo']).total_seconds() / 60)
-                emp['minutos_fuera']            = minutos_fuera
+            if ahora >= hora_limite and not ya_notificado_hoy(cur, 'almuerzo_extendido', emp['nombre']):
                 emp['hora_salida_almuerzo_fmt'] = emp['hora_salida_almuerzo'].strftime('%H:%M')
                 demorados.append(emp)
 
@@ -310,8 +290,7 @@ def verificar_almuerzo():
             for emp in demorados:
                 conjunto = emp['conjunto'] or 'Sin conjunto'
                 mensaje  = (
-                    f"🍽️ {emp['nombre']} ({conjunto}) lleva "
-                    f"{emp['minutos_fuera']} min en almuerzo "
+                    f"🍽️ {emp['nombre']} ({conjunto}) lleva más de 65 min en almuerzo "
                     f"(salió a las {emp['hora_salida_almuerzo_fmt']})"
                 )
                 guardar_notificacion(cur, 'almuerzo_extendido', mensaje)
@@ -323,7 +302,7 @@ def verificar_almuerzo():
                 f"<td style='padding:8px;border-bottom:1px solid #eee'>{e['nombre']}</td>"
                 f"<td style='padding:8px;border-bottom:1px solid #eee'>{e['conjunto'] or '—'}</td>"
                 f"<td style='padding:8px;border-bottom:1px solid #eee'>{e['hora_salida_almuerzo_fmt']}</td>"
-                f"<td style='padding:8px;border-bottom:1px solid #eee;color:#dc2626;font-weight:600'>{e['minutos_fuera']} min</td>"
+                f"<td style='padding:8px;border-bottom:1px solid #eee;color:#dc2626;font-weight:600'>+65 min</td>"
                 f"</tr>"
                 for e in demorados
             ])
@@ -332,13 +311,13 @@ def verificar_almuerzo():
                 f"🍽️ {len(demorados)} empleado(s) con almuerzo extendido — {hoy.strftime('%d/%m/%Y')}",
                 _plantilla_correo(
                     titulo      = "🍽️ Empleados con almuerzo extendido",
-                    subtitulo   = f"{hoy.strftime('%d/%m/%Y')} — {ahora.strftime('%H:%M')} · Límite: 1h 5min",
-                    encabezados = ['Empleado', 'Conjunto', 'Salió a almorzar', 'Tiempo fuera'],
+                    subtitulo   = f"{hoy.strftime('%d/%m/%Y')} — {ahora.strftime('%H:%M')} · Límite: 60 min",
+                    encabezados = ['Empleado', 'Conjunto', 'Salió a almorzar', 'Retraso'],
                     filas_html  = lista_html
                 )
             )
 
-        print(f"✅ verificar_almuerzo OK — {len(demorados)} demorado(s) en ventana")
+        print(f"✅ verificar_almuerzo OK — {len(demorados)} demorado(s)")
 
     except Exception as e:
         print(f"❌ Error en verificar_almuerzo: {e}")
@@ -348,13 +327,13 @@ def verificar_almuerzo():
 
 
 # ══════════════════════════════════════════════════════════════
-# VERIFICAR BREAK — más de 15 min fuera (ventana 20–25 min)
+# VERIFICAR BREAK — +20 min desde salida a break
 # ══════════════════════════════════════════════════════════════
 def verificar_break():
     cur = None
     try:
         cur = mysql.connection.cursor()
-        hoy   = date.today()
+        hoy    = date.today()
         bogota = pytz.timezone('America/Bogota')
         ahora  = datetime.now(bogota).replace(tzinfo=None)
 
@@ -380,13 +359,9 @@ def verificar_break():
             if not emp['hora_salida_break']:
                 continue
 
-            hora_inicio_ventana = emp['hora_salida_break'] + timedelta(minutes=20)
-            hora_fin_ventana    = emp['hora_salida_break'] + timedelta(minutes=25)
+            hora_limite = emp['hora_salida_break'] + timedelta(minutes=20)
 
-            if hora_inicio_ventana <= ahora <= hora_fin_ventana \
-                    and not ya_notificado_hoy(cur, 'break_extendido', emp['nombre']):
-                minutos_fuera = int((ahora - emp['hora_salida_break']).total_seconds() / 60)
-                emp['minutos_fuera']         = minutos_fuera
+            if ahora >= hora_limite and not ya_notificado_hoy(cur, 'break_extendido', emp['nombre']):
                 emp['hora_salida_break_fmt'] = emp['hora_salida_break'].strftime('%H:%M')
                 demorados.append(emp)
 
@@ -394,8 +369,7 @@ def verificar_break():
             for emp in demorados:
                 conjunto = emp['conjunto'] or 'Sin conjunto'
                 mensaje  = (
-                    f"☕ {emp['nombre']} ({conjunto}) lleva "
-                    f"{emp['minutos_fuera']} min en break "
+                    f"☕ {emp['nombre']} ({conjunto}) lleva más de 20 min en break "
                     f"(salió a las {emp['hora_salida_break_fmt']})"
                 )
                 guardar_notificacion(cur, 'break_extendido', mensaje)
@@ -407,7 +381,7 @@ def verificar_break():
                 f"<td style='padding:8px;border-bottom:1px solid #eee'>{e['nombre']}</td>"
                 f"<td style='padding:8px;border-bottom:1px solid #eee'>{e['conjunto'] or '—'}</td>"
                 f"<td style='padding:8px;border-bottom:1px solid #eee'>{e['hora_salida_break_fmt']}</td>"
-                f"<td style='padding:8px;border-bottom:1px solid #eee;color:#dc2626;font-weight:600'>{e['minutos_fuera']} min</td>"
+                f"<td style='padding:8px;border-bottom:1px solid #eee;color:#dc2626;font-weight:600'>+20 min</td>"
                 f"</tr>"
                 for e in demorados
             ])
@@ -417,12 +391,12 @@ def verificar_break():
                 _plantilla_correo(
                     titulo      = "☕ Empleados con break extendido",
                     subtitulo   = f"{hoy.strftime('%d/%m/%Y')} — {ahora.strftime('%H:%M')} · Límite: 15 min",
-                    encabezados = ['Empleado', 'Conjunto', 'Salió a break', 'Tiempo fuera'],
+                    encabezados = ['Empleado', 'Conjunto', 'Salió a break', 'Retraso'],
                     filas_html  = lista_html
                 )
             )
 
-        print(f"✅ verificar_break OK — {len(demorados)} demorado(s) en ventana")
+        print(f"✅ verificar_break OK — {len(demorados)} demorado(s)")
 
     except Exception as e:
         print(f"❌ Error en verificar_break: {e}")
